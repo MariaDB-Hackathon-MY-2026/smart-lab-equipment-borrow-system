@@ -26,11 +26,20 @@ class Equipment(models.Model):
         ('maintenance', 'Under Maintenance'),
         ('retired', 'Retired'),
     ]
+    CONDITION_CHOICES = [
+        ('excellent', 'Excellent'),
+        ('good', 'Good'),
+        ('fair', 'Fair'),
+        ('damaged', 'Damaged'),
+        ('needs_repair', 'Needs Repair'),
+    ]
 
     name = models.CharField(max_length=150)
     category = models.CharField(max_length=80, blank=True)
     serial_number = models.CharField(max_length=80, unique=True, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='available')
+    condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='good')
+    condition_remarks = models.TextField(blank=True)
     daily_penalty = models.DecimalField(max_digits=8, decimal_places=2, default=2.00)
     created_at = models.DateTimeField(auto_now_add=True)
 

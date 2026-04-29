@@ -25,8 +25,8 @@ class MemberAdmin(admin.ModelAdmin):
 
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'serial_number', 'status', 'daily_penalty')
-    list_filter = ('status', 'category')
+    list_display = ('name', 'category', 'serial_number', 'status', 'condition', 'daily_penalty')
+    list_filter = ('status', 'condition', 'category')
     search_fields = ('name', 'category', 'serial_number')
 
 

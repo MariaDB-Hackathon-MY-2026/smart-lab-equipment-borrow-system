@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
@@ -8,6 +8,7 @@ import calendar
 
 from lendr_project.decorators import admin_required
 
+from .forms import EquipmentForm
 from .models import Equipment, Borrow
 
 
@@ -28,6 +29,93 @@ def _append_note(borrow, note):
         borrow.notes = f'{borrow.notes}\n{note}'
     else:
         borrow.notes = note
+
+
+def _equipment_queryset(request):
+    equipment = Equipment.objects.order_by('name')
+    query = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+
+    if query:
+        equipment = equipment.filter(
+            Q(name__icontains=query)
+            | Q(category__icontains=query)
+            | Q(serial_number__icontains=query)
+        )
+    if status:
+        equipment = equipment.filter(status=status)
+
+    return equipment, query, status
+
+
+@admin_required
+def equipment_management(request):
+    if request.method == 'POST':
+        form = EquipmentForm(request.POST)
+        if form.is_valid():
+            equipment = form.save()
+            messages.success(request, f'{equipment.name} was added to the equipment inventory.')
+            return redirect('dashboard:equipment_management')
+    else:
+        form = EquipmentForm()
+
+    equipment, query, status = _equipment_queryset(request)
+    context = {
+        'equipment': equipment,
+        'form': form,
+        'editing_equipment': None,
+        'query': query,
+        'selected_status': status,
+        'status_choices': Equipment.STATUS_CHOICES,
+        'total_equipment': Equipment.objects.count(),
+        'available_count': Equipment.objects.filter(status='available').count(),
+        'borrowed_count': Equipment.objects.filter(status='borrowed').count(),
+        'maintenance_count': Equipment.objects.filter(status='maintenance').count(),
+        'retired_count': Equipment.objects.filter(status='retired').count(),
+    }
+    return render(request, 'equipment_management.html', context)
+
+
+@admin_required
+def edit_equipment(request, equipment_id):
+    editing_equipment = get_object_or_404(Equipment, pk=equipment_id)
+
+    if request.method == 'POST':
+        form = EquipmentForm(request.POST, instance=editing_equipment)
+        if form.is_valid():
+            equipment = form.save()
+            messages.success(request, f'{equipment.name} was updated.')
+            return redirect('dashboard:equipment_management')
+    else:
+        form = EquipmentForm(instance=editing_equipment)
+
+    equipment, query, status = _equipment_queryset(request)
+    context = {
+        'equipment': equipment,
+        'form': form,
+        'editing_equipment': editing_equipment,
+        'query': query,
+        'selected_status': status,
+        'status_choices': Equipment.STATUS_CHOICES,
+        'total_equipment': Equipment.objects.count(),
+        'available_count': Equipment.objects.filter(status='available').count(),
+        'borrowed_count': Equipment.objects.filter(status='borrowed').count(),
+        'maintenance_count': Equipment.objects.filter(status='maintenance').count(),
+        'retired_count': Equipment.objects.filter(status='retired').count(),
+    }
+    return render(request, 'equipment_management.html', context)
+
+
+@admin_required
+@require_POST
+def deactivate_equipment(request, equipment_id):
+    equipment = get_object_or_404(Equipment, pk=equipment_id)
+    equipment.status = 'retired'
+    if not equipment.condition_remarks:
+        equipment.condition_remarks = f'Deactivated by {request.user.get_username()} on {date.today().isoformat()}.'
+    equipment.save(update_fields=['status', 'condition_remarks'])
+    messages.success(request, f'{equipment.name} was deactivated.')
+    return redirect('dashboard:equipment_management')
 
 
 @admin_required
