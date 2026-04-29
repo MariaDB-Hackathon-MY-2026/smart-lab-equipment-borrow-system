@@ -1,8 +1,7 @@
 from django.contrib import admin
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.urls import include, path
-from django.views.generic import TemplateView
+from dashboard import views as dashboard_views
 
 
 def root_redirect(request):
@@ -11,6 +10,7 @@ def root_redirect(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
-    path('dashboard/', login_required(TemplateView.as_view(template_name='dashboard.html')), name='dashboard'),
+    path('dashboard/', include('dashboard.urls', namespace='dashboard')),
+    path('admin-dashboard/', dashboard_views.admin_dashboard, name='admin-dashboard'),
     path('', root_redirect, name='root'),
 ]
