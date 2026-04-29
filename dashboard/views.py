@@ -1,4 +1,3 @@
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Count, Sum
@@ -6,6 +5,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 import calendar
+
+from lendr_project.decorators import admin_required
 
 from .models import Equipment, Borrow
 
@@ -29,7 +30,7 @@ def _append_note(borrow, note):
         borrow.notes = note
 
 
-@staff_member_required
+@admin_required
 def admin_dashboard(request):
     """
     LendR+ Admin Analytics Dashboard view.
@@ -175,7 +176,7 @@ def admin_dashboard(request):
     return render(request, 'admin_dashboard.html', context)
 
 
-@staff_member_required
+@admin_required
 @require_POST
 def approve_borrow_request(request, borrow_id):
     with transaction.atomic():
@@ -210,7 +211,7 @@ def approve_borrow_request(request, borrow_id):
     return redirect('dashboard:overview')
 
 
-@staff_member_required
+@admin_required
 @require_POST
 def reject_borrow_request(request, borrow_id):
     with transaction.atomic():

@@ -1,0 +1,46 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LendR+ | User Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+    <main class="mx-auto max-w-5xl px-5 py-10 sm:px-8">
+        <section class="rounded-[2rem] bg-white p-8 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200 sm:p-10">
+            <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-4">
+                    <img src="{% static 'images/lendr-small-logo.jpg' %}" alt="LendR+ mark" class="h-14 w-14 rounded-2xl object-cover">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-600">User Area</p>
+                        <h1 class="mt-2 text-3xl font-semibold tracking-tight">Welcome, {{ user.get_full_name|default:user.username }}</h1>
+                    </div>
+                </div>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700">
+                        Log Out
+                    </button>
+                </form>
+            </div>
+
+            <div class="mt-8 grid gap-4 sm:grid-cols-2">
+                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                    <p class="text-sm font-medium text-slate-500">Username</p>
+                    <p class="mt-2 text-lg font-semibold">{{ user.username }}</p>
+                </div>
+                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                    <p class="text-sm font-medium text-slate-500">Member ID</p>
+                    <p class="mt-2 text-lg font-semibold">{{ member.member_id|default:"Not assigned" }}</p>
+                </div>
+            </div>
+
+            <div class="mt-8 rounded-3xl border border-sky-100 bg-sky-50 p-6 text-slate-700">
+                Your user dashboard is ready. This is where we can build equipment requests, borrowing history, and return status for normal users next.
+            </div>
+        </section>
+    </main>
+</body>
+</html>

@@ -87,17 +87,28 @@
         <main class="relative z-10 flex min-h-screen items-center justify-center px-4 py-8">
             <section class="w-full max-w-[565px] rounded-[1.7rem] border border-white/85 bg-[rgba(255,255,255,0.985)] px-5 py-6 shadow-card animate-fadeLift sm:px-8 sm:py-8 lg:px-[44px] lg:py-[43px]">
                 <div class="mx-auto max-w-[485px]">
-                    <div class="flex items-center gap-4.5">
-                        <div class="flex h-[50px] w-[50px] items-center justify-center rounded-[0.95rem] border border-slate-200/85 bg-white shadow-field">
-                            <img src="{% static 'images/lendr-small-logo.jpg' %}" alt="LendR+ logo" class="h-[36px] w-[36px] rounded-[0.65rem] object-cover">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex items-center gap-4.5">
+                            <div class="flex h-[50px] w-[50px] items-center justify-center rounded-[0.95rem] border border-slate-200/85 bg-white shadow-field">
+                                <img src="{% static 'images/lendr-small-logo.jpg' %}" alt="LendR+ logo" class="h-[36px] w-[36px] rounded-[0.65rem] object-cover">
+                            </div>
+                            <h1 class="text-[1.72rem] font-medium tracking-[0.08em] text-lendr-ink sm:text-[2.18rem]">LendR+</h1>
                         </div>
-                        <h1 class="text-[1.72rem] font-medium tracking-[0.08em] text-lendr-ink sm:text-[2.18rem]">LendR+</h1>
+
+                        <button
+                            type="button"
+                            id="openRegisterPanel"
+                            class="rounded-full border border-slate-200 bg-white px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-slate-600 transition hover:border-sky-200 hover:text-sky-700"
+                        >
+                            Register
+                        </button>
                     </div>
 
                     <p class="mt-6 text-[0.84rem] text-lendr-body sm:text-[0.9rem]">Sign in to continue to LendR+</p>
 
                     <form method="post" class="mt-[34px]">
                         {% csrf_token %}
+                        <input type="hidden" name="action" value="login">
                         {% if next %}
                         <input type="hidden" name="next" value="{{ next }}">
                         {% endif %}
@@ -153,11 +164,90 @@
                 </div>
             </section>
         </main>
+
+        <div id="registerOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/20 backdrop-blur-[2px]"></div>
+
+        <section
+            id="registerPanel"
+            class="fixed right-4 top-4 z-50 hidden w-[min(92vw,420px)] rounded-[1.7rem] border border-white/80 bg-[rgba(255,255,255,0.985)] p-6 shadow-2xl shadow-slate-300/30 sm:right-6 sm:top-6 sm:p-7"
+        >
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-sky-600">New User</p>
+                    <h2 class="mt-2 text-xl font-semibold tracking-tight text-lendr-ink">Create an account</h2>
+                    <p class="mt-2 text-sm text-lendr-body">Register as a user to request and manage equipment borrowing.</p>
+                </div>
+                <button
+                    type="button"
+                    id="closeRegisterPanel"
+                    class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:text-slate-900"
+                    aria-label="Close registration panel"
+                >
+                    Close
+                </button>
+            </div>
+
+            <form method="post" class="mt-6 space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="register">
+
+                <div>
+                    <label for="reg_name" class="mb-2 block text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-slate-500">Name</label>
+                    <input id="reg_name" name="name" type="text" value="{{ register_form.name.value|default:'' }}" required class="h-[46px] w-full rounded-[0.95rem] border border-lendr-field bg-white px-4 text-sm text-slate-800 shadow-field outline-none placeholder:text-slate-400 focus:border-[#d8dfeb] focus:ring-0">
+                </div>
+
+                <div>
+                    <label for="reg_username" class="mb-2 block text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-slate-500">Username</label>
+                    <input id="reg_username" name="username" type="text" value="{{ register_form.username.value|default:'' }}" required class="h-[46px] w-full rounded-[0.95rem] border border-lendr-field bg-white px-4 text-sm text-slate-800 shadow-field outline-none placeholder:text-slate-400 focus:border-[#d8dfeb] focus:ring-0">
+                </div>
+
+                <div>
+                    <label for="reg_email" class="mb-2 block text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-slate-500">Email</label>
+                    <input id="reg_email" name="email" type="email" value="{{ register_form.email.value|default:'' }}" required class="h-[46px] w-full rounded-[0.95rem] border border-lendr-field bg-white px-4 text-sm text-slate-800 shadow-field outline-none placeholder:text-slate-400 focus:border-[#d8dfeb] focus:ring-0">
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="reg_password1" class="mb-2 block text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-slate-500">Password</label>
+                        <input id="reg_password1" name="password1" type="password" required class="h-[46px] w-full rounded-[0.95rem] border border-lendr-field bg-white px-4 text-sm text-slate-800 shadow-field outline-none placeholder:text-slate-400 focus:border-[#d8dfeb] focus:ring-0">
+                    </div>
+                    <div>
+                        <label for="reg_password2" class="mb-2 block text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-slate-500">Confirm Password</label>
+                        <input id="reg_password2" name="password2" type="password" required class="h-[46px] w-full rounded-[0.95rem] border border-lendr-field bg-white px-4 text-sm text-slate-800 shadow-field outline-none placeholder:text-slate-400 focus:border-[#d8dfeb] focus:ring-0">
+                    </div>
+                </div>
+
+                <button
+                    type="submit"
+                    class="mt-2 h-[48px] w-full rounded-[0.95rem] bg-slate-900 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-sky-700"
+                >
+                    Create Account
+                </button>
+            </form>
+        </section>
     </div>
 
     <script>
+        const registerPanel = document.getElementById('registerPanel');
+        const registerOverlay = document.getElementById('registerOverlay');
+        const openRegisterPanel = document.getElementById('openRegisterPanel');
+        const closeRegisterPanel = document.getElementById('closeRegisterPanel');
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('id_password');
+
+        const showRegisterPanel = function () {
+            registerPanel?.classList.remove('hidden');
+            registerOverlay?.classList.remove('hidden');
+        };
+
+        const hideRegisterPanel = function () {
+            registerPanel?.classList.add('hidden');
+            registerOverlay?.classList.add('hidden');
+        };
+
+        openRegisterPanel?.addEventListener('click', showRegisterPanel);
+        closeRegisterPanel?.addEventListener('click', hideRegisterPanel);
+        registerOverlay?.addEventListener('click', hideRegisterPanel);
 
         if (togglePassword && passwordInput) {
             const showPassword = function () {
@@ -187,9 +277,28 @@
             togglePassword.addEventListener('blur', hidePassword);
         }
 
+        {% if active_panel == 'register' %}
+        showRegisterPanel();
+        {% endif %}
+
         {% if form.errors %}
         window.addEventListener('load', function () {
             alert('Please enter a correct username and password. Note that both fields may be case-sensitive.');
+        });
+        {% endif %}
+
+        {% if register_form.errors %}
+        window.addEventListener('load', function () {
+            alert('{{ register_form.errors.as_text|striptags|escapejs }}');
+            showRegisterPanel();
+        });
+        {% endif %}
+
+        {% if messages %}
+        window.addEventListener('load', function () {
+            {% for message in messages %}
+            alert('{{ message|escapejs }}');
+            {% endfor %}
         });
         {% endif %}
     </script>
