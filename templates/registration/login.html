@@ -1,0 +1,197 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LendR+ | Log in</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        lendr: {
+                            ink: '#1a2440',
+                            body: '#5b6981',
+                            field: '#d8dfeb',
+                            panel: 'rgba(255,255,255,0.36)',
+                            panelBorder: 'rgba(255,255,255,0.62)',
+                            grid: 'rgba(177,190,215,0.16)'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Avenir Next"', 'Avenir', '"Segoe UI"', 'sans-serif']
+                    },
+                    boxShadow: {
+                        card: '0 8px 18px rgba(137, 156, 194, 0.06)',
+                        tile: '0 16px 40px rgba(137, 156, 194, 0.10)',
+                        field: '0 1px 4px rgba(137, 156, 194, 0.06)'
+                    },
+                    keyframes: {
+                        driftA: {
+                            '0%, 100%': { transform: 'translate3d(0,0,0) rotate(-8deg)' },
+                            '50%': { transform: 'translate3d(0,-6px,0) rotate(-7deg)' }
+                        },
+                        driftB: {
+                            '0%, 100%': { transform: 'translate3d(0,0,0) rotate(8deg)' },
+                            '50%': { transform: 'translate3d(0,6px,0) rotate(9deg)' }
+                        },
+                        driftC: {
+                            '0%, 100%': { transform: 'translate3d(0,0,0) rotate(10deg)' },
+                            '50%': { transform: 'translate3d(0,-7px,0) rotate(9deg)' }
+                        },
+                        driftD: {
+                            '0%, 100%': { transform: 'translate3d(0,0,0) rotate(-7deg)' },
+                            '50%': { transform: 'translate3d(0,5px,0) rotate(-6deg)' }
+                        },
+                        fadeLift: {
+                            '0%': { opacity: '0', transform: 'translate3d(0, 12px, 0) scale(0.99)' },
+                            '100%': { opacity: '1', transform: 'translate3d(0, 0, 0) scale(1)' }
+                        },
+                        pulseDot: {
+                            '0%, 100%': { opacity: '0.45', transform: 'scale(1)' },
+                            '50%': { opacity: '0.9', transform: 'scale(1.18)' }
+                        }
+                    },
+                    animation: {
+                        driftA: 'driftA 8s ease-in-out infinite',
+                        driftB: 'driftB 9s ease-in-out infinite',
+                        driftC: 'driftC 10s ease-in-out infinite',
+                        driftD: 'driftD 11s ease-in-out infinite',
+                        fadeLift: 'fadeLift 700ms ease-out both',
+                        pulseDot: 'pulseDot 4s ease-in-out infinite'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen overflow-hidden bg-[#eef5ff] font-sans text-lendr-ink antialiased">
+    <div class="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_left_14%,rgba(194,239,255,0.78),transparent_28%),radial-gradient(circle_at_right_18%,rgba(206,215,255,0.82),transparent_31%),linear-gradient(90deg,#eef5ff_0%,#f7fbff_50%,#e8efff_100%)]">
+        <div class="absolute inset-0 [background-image:linear-gradient(to_right,rgba(177,190,215,0.16)_1px,transparent_1px),linear-gradient(to_bottom,rgba(177,190,215,0.16)_1px,transparent_1px)] [background-size:90px_90px]"></div>
+
+        <div class="pointer-events-none absolute left-[7.6%] top-[18.5%] hidden h-[182px] w-[350px] rounded-[2rem] border border-lendr-panelBorder bg-[rgba(255,255,255,0.34)] shadow-tile backdrop-blur-[2px] lg:block animate-driftA"></div>
+        <div class="pointer-events-none absolute left-[11.7%] top-[63%] hidden h-[240px] w-[308px] rounded-[2rem] border border-lendr-panelBorder bg-[linear-gradient(180deg,rgba(216,246,255,0.42),rgba(255,255,255,0.21))] shadow-tile backdrop-blur-[2px] lg:block animate-driftB"></div>
+        <div class="pointer-events-none absolute right-[9.8%] top-[23.8%] hidden h-[220px] w-[306px] rounded-[2rem] border border-lendr-panelBorder bg-[rgba(255,255,255,0.28)] shadow-tile backdrop-blur-[2px] lg:block animate-driftC"></div>
+        <div class="pointer-events-none absolute right-[17.8%] top-[73.2%] hidden h-[170px] w-[340px] rounded-[2rem] border border-lendr-panelBorder bg-[rgba(255,255,255,0.22)] shadow-tile backdrop-blur-[2px] lg:block animate-driftD"></div>
+
+        <div class="pointer-events-none absolute left-[6.1%] top-[11.7%] h-4 w-4 rounded-full bg-slate-400/25 animate-pulseDot"></div>
+        <div class="pointer-events-none absolute left-[23.7%] top-[7.4%] h-7 w-7 rounded-full bg-white/75 animate-pulseDot" style="animation-delay: 0.4s;"></div>
+        <div class="pointer-events-none absolute left-[10.2%] top-[82.6%] h-6 w-6 rounded-full bg-white/85 animate-pulseDot" style="animation-delay: 0.8s;"></div>
+        <div class="pointer-events-none absolute right-[17.4%] top-[14.2%] h-6 w-6 rounded-full bg-slate-400/20 animate-pulseDot" style="animation-delay: 1.2s;"></div>
+        <div class="pointer-events-none absolute right-[8.2%] top-[39.1%] h-4 w-4 rounded-full bg-white/90 animate-pulseDot" style="animation-delay: 1.6s;"></div>
+        <div class="pointer-events-none absolute right-[24.1%] top-[90.4%] h-7 w-7 rounded-full bg-slate-400/20 animate-pulseDot" style="animation-delay: 2s;"></div>
+
+        <main class="relative z-10 flex min-h-screen items-center justify-center px-4 py-8">
+            <section class="w-full max-w-[565px] rounded-[1.7rem] border border-white/85 bg-[rgba(255,255,255,0.985)] px-5 py-6 shadow-card animate-fadeLift sm:px-8 sm:py-8 lg:px-[44px] lg:py-[43px]">
+                <div class="mx-auto max-w-[485px]">
+                    <div class="flex items-center gap-4.5">
+                        <div class="flex h-[50px] w-[50px] items-center justify-center rounded-[0.95rem] border border-slate-200/85 bg-white shadow-field">
+                            <img src="{% static 'images/lendr-small-logo.jpg' %}" alt="LendR+ logo" class="h-[36px] w-[36px] rounded-[0.65rem] object-cover">
+                        </div>
+                        <h1 class="text-[1.72rem] font-medium tracking-[0.08em] text-lendr-ink sm:text-[2.18rem]">LendR+</h1>
+                    </div>
+
+                    <p class="mt-6 text-[0.84rem] text-lendr-body sm:text-[0.9rem]">Sign in to continue to LendR+</p>
+
+                    <form method="post" class="mt-[34px]">
+                        {% csrf_token %}
+                        {% if next %}
+                        <input type="hidden" name="next" value="{{ next }}">
+                        {% endif %}
+
+                        <div>
+                            <label for="id_username" class="mb-[8px] block text-[0.78rem] font-semibold text-slate-700">Username</label>
+                            <input
+                                id="id_username"
+                                name="username"
+                                type="text"
+                                autocomplete="username"
+                                placeholder="Enter your username"
+                                {% if form.username.value %}value="{{ form.username.value }}"{% endif %}
+                                required
+                                autofocus
+                                class="h-[53px] w-full rounded-[1rem] border border-lendr-field bg-white px-5 text-[0.84rem] text-slate-800 shadow-field outline-none transition placeholder:text-slate-400 focus:border-[#d8dfeb] focus:ring-0"
+                            >
+                        </div>
+
+                        <div class="mt-[24px]">
+                            <label for="id_password" class="mb-[8px] block text-[0.78rem] font-semibold text-slate-700">Password</label>
+                            <div class="relative">
+                                <input
+                                    id="id_password"
+                                    name="password"
+                                    type="password"
+                                    autocomplete="current-password"
+                                    placeholder="Enter your password"
+                                    required
+                                    class="h-[53px] w-full rounded-[1rem] border border-lendr-field bg-white px-5 pr-[54px] text-[0.84rem] text-slate-800 shadow-field outline-none transition placeholder:text-slate-400 focus:border-[#d8dfeb] focus:ring-0"
+                                >
+                                <button
+                                    type="button"
+                                    id="togglePassword"
+                                    class="absolute inset-y-0 right-0 flex w-[48px] items-center justify-center text-slate-500 transition hover:text-slate-700"
+                                    aria-label="Toggle password visibility"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-[13.5px] w-[22px]" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3.5 11.2C4.8 6.1 8.4 3.4 13 3.4c4.6 0 8.2 2.7 9.5 7.8"></path>
+                                        <circle cx="13" cy="10.2" r="3.25"></circle>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="mt-[21px] h-[51px] w-full rounded-[1rem] bg-[#050811] text-[0.84rem] font-semibold uppercase tracking-[0.14em] text-white transition duration-200 hover:bg-[#0d1320] focus:outline-none focus:ring-0"
+                        >
+                            Login
+                        </button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('id_password');
+
+        if (togglePassword && passwordInput) {
+            const showPassword = function () {
+                passwordInput.type = 'text';
+            };
+
+            const hidePassword = function () {
+                passwordInput.type = 'password';
+            };
+
+            togglePassword.addEventListener('mousedown', showPassword);
+            togglePassword.addEventListener('mouseup', hidePassword);
+            togglePassword.addEventListener('mouseleave', hidePassword);
+
+            togglePassword.addEventListener('touchstart', showPassword, { passive: true });
+            togglePassword.addEventListener('touchend', hidePassword);
+            togglePassword.addEventListener('touchcancel', hidePassword);
+
+            togglePassword.addEventListener('keydown', function (event) {
+                if (event.code === 'Space' || event.code === 'Enter') {
+                    event.preventDefault();
+                    showPassword();
+                }
+            });
+
+            togglePassword.addEventListener('keyup', hidePassword);
+            togglePassword.addEventListener('blur', hidePassword);
+        }
+
+        {% if form.errors %}
+        window.addEventListener('load', function () {
+            alert('Please enter a correct username and password. Note that both fields may be case-sensitive.');
+        });
+        {% endif %}
+    </script>
+</body>
+</html>
