@@ -76,3 +76,35 @@ class Borrow(models.Model):
 
     def __str__(self):
         return f"{self.member} -> {self.equipment} ({self.status})"
+
+
+class BorrowRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Waiting for Approval'),
+        ('approved', 'Approved'),
+        ('denied', 'Request Denied'),
+        ('return_pending', 'Return Pending'),
+        ('returned', 'Returned'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='borrow_requests')
+    equipment = models.ForeignKey(Equipment, on_delete=models.PROTECT, related_name='borrow_requests')
+    full_name = models.CharField(max_length=150)
+    student_id = models.CharField(max_length=40)
+    faculty_department = models.CharField(max_length=120, blank=True)
+    email = models.EmailField(max_length=254)
+    phone_number = models.CharField(max_length=30)
+    purpose = models.TextField()
+    borrow_date = models.DateField()
+    duration_days = models.PositiveIntegerField()
+    expected_return_date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'borrow_requests'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.get_username()} -> {self.equipment.name} ({self.status})"
