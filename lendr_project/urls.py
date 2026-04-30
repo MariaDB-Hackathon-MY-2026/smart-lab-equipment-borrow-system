@@ -21,6 +21,8 @@ urlpatterns = [
     path('user/profile/', lendr_views.user_dashboard, {'section': 'profile'}, name='user-profile'),
     path('user/equipment/<int:equipment_id>/borrow/', lendr_views.borrow_equipment, name='borrow-equipment'),
     path('user/requests/<int:request_id>/return/', lendr_views.request_return, name='request-return'),
+    path('user/requests/<int:request_id>/cancel-borrow/', lendr_views.cancel_borrow_request, name='cancel-borrow-request'),
+    path('user/requests/<int:request_id>/cancel-return/', lendr_views.cancel_return_request, name='cancel-return-request'),
     path('user/profile/update/', lendr_views.update_profile, name='update-profile'),
     path('', root_redirect, name='root'),
 ]

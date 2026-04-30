@@ -15,4 +15,5 @@ urlpatterns = [
     path('equipment/<int:equipment_id>/deactivate/', views.deactivate_equipment, name='deactivate_equipment'),
     path('requests/<int:borrow_id>/approve/', views.approve_borrow_request, name='approve_request'),
     path('requests/<int:borrow_id>/reject/', views.reject_borrow_request, name='reject_request'),
+    path('requests/<int:borrow_id>/verify-return/', views.verify_return_request, name='verify_return_request'),
 ]

@@ -9,7 +9,7 @@ import calendar
 from lendr_project.decorators import admin_required
 
 from .forms import EquipmentForm
-from .models import Equipment, Borrow, BorrowRequest
+from .models import Equipment, Borrow, BorrowRequest, Member
 
 
 def add_weekdays(start_date, weekdays):
@@ -176,8 +176,25 @@ def deactivate_equipment(request, equipment_id):
 @admin_required
 def borrowing_records(request):
     borrowings, query, status = _borrowing_queryset(request)
+    pending_borrow_requests = (
+        BorrowRequest.objects
+        .filter(status='pending')
+        .select_related('user', 'equipment')
+        .order_by('created_at')
+    )
+    pending_return_requests = (
+        BorrowRequest.objects
+        .filter(status='return_pending')
+        .select_related('user', 'equipment')
+        .order_by('updated_at')
+    )
+    pending_borrow_count = pending_borrow_requests.count()
+    pending_return_count = pending_return_requests.count()
+    total_pending_request_count = pending_borrow_count + pending_return_count
     context = {
         'borrowings': borrowings,
+        'pending_borrow_requests': pending_borrow_requests,
+        'pending_return_requests': pending_return_requests,
         'query': query,
         'selected_status': status,
         'status_choices': Borrow.STATUS_CHOICES,
@@ -186,6 +203,9 @@ def borrowing_records(request):
         'overdue_count': Borrow.objects.filter(status='Overdue').count(),
         'returned_count': Borrow.objects.filter(status='Returned').count(),
         'pending_count': Borrow.objects.filter(status='Pending').count(),
+        'pending_borrow_count': pending_borrow_count,
+        'pending_return_count': pending_return_count,
+        'total_pending_request_count': total_pending_request_count,
     }
     return render(request, 'borrowing_records.html', context)
 
@@ -242,13 +262,12 @@ def admin_dashboard(request):
     )
     total_transactions = Borrow.objects.count()
 
-    # Get pending borrowing requests from BorrowRequest model
-    pending_requests = (
-        BorrowRequest.objects
-        .filter(status='pending')
-        .select_related('user', 'equipment')
-        .order_by('created_at')[:10]
-    )
+    pending_borrow_count = BorrowRequest.objects.filter(status='pending').count()
+    pending_return_count = BorrowRequest.objects.filter(status='return_pending').count()
+    total_pending_request_count = pending_borrow_count + pending_return_count
+    max_pending_request_count = max(pending_borrow_count, pending_return_count, 1)
+    pending_borrow_pct = round((pending_borrow_count / max_pending_request_count) * 100)
+    pending_return_pct = round((pending_return_count / max_pending_request_count) * 100)
 
     # ─── MOST BORROWED EQUIPMENT ─────────────────────────────────
     top_equipment = (
@@ -325,8 +344,7 @@ def admin_dashboard(request):
         return_date__year=today.year,
     ).count()
 
-    # Count pending requests from BorrowRequest model
-    pending_count = BorrowRequest.objects.filter(status='pending').count()
+    pending_count = total_pending_request_count
 
     context = {
         # KPI Cards
@@ -338,8 +356,6 @@ def admin_dashboard(request):
         # Table
         'transactions': transactions,
         'total_transactions': total_transactions,
-        'pending_requests': pending_requests,
-
         # Reports
         'most_borrowed': most_borrowed,
         'overdue_summary': overdue_summary,
@@ -355,6 +371,11 @@ def admin_dashboard(request):
         # Extras
         'returned_this_month': returned_this_month,
         'pending_count': pending_count,
+        'pending_borrow_count': pending_borrow_count,
+        'pending_return_count': pending_return_count,
+        'total_pending_request_count': total_pending_request_count,
+        'pending_borrow_pct': pending_borrow_pct,
+        'pending_return_pct': pending_return_pct,
     }
 
     return render(request, 'admin_dashboard.html', context)
@@ -373,12 +394,12 @@ def approve_borrow_request(request, borrow_id):
 
         if borrow_request.status != 'pending':
             messages.warning(request, 'Only pending borrowing requests can be approved.')
-            return redirect('dashboard:overview')
+            return redirect('dashboard:borrowings')
 
         equipment = Equipment.objects.select_for_update().get(pk=borrow_request.equipment_id)
         if equipment.status != 'available':
             messages.error(request, f'{equipment.name} is not available, so this request cannot be approved.')
-            return redirect('dashboard:overview')
+            return redirect('dashboard:borrowings')
 
         # Update the BorrowRequest status
         borrow_request.status = 'approved'
@@ -389,7 +410,6 @@ def approve_borrow_request(request, borrow_id):
         due_date = add_weekdays(approved_date, 5)
         
         # Get or create member for the user
-        from .models import Member
         member, created = Member.objects.get_or_create(
             user=borrow_request.user,
             defaults={
@@ -413,7 +433,7 @@ def approve_borrow_request(request, borrow_id):
         equipment.save(update_fields=['status'])
 
     messages.success(request, f'Borrowing request for {borrow_request.equipment.name} was approved.')
-    return redirect('dashboard:overview')
+    return redirect('dashboard:borrowings')
 
 
 @admin_required
@@ -428,13 +448,60 @@ def reject_borrow_request(request, borrow_id):
 
         if borrow_request.status != 'pending':
             messages.warning(request, 'Only pending borrowing requests can be rejected.')
-            return redirect('dashboard:overview')
+            return redirect('dashboard:borrowings')
 
         borrow_request.status = 'denied'
         borrow_request.save(update_fields=['status'])
 
     messages.success(request, f'Borrowing request for {borrow_request.equipment.name} was rejected.')
-    return redirect('dashboard:overview')
+    return redirect('dashboard:borrowings')
+
+
+@admin_required
+@require_POST
+def verify_return_request(request, borrow_id):
+    """Verify a user return request and close the active borrowing."""
+    with transaction.atomic():
+        borrow_request = get_object_or_404(
+            BorrowRequest.objects.select_for_update().select_related('user', 'equipment'),
+            pk=borrow_id,
+        )
+
+        if borrow_request.status != 'return_pending':
+            messages.warning(request, 'Only return-pending requests can be verified.')
+            return redirect('dashboard:borrowings')
+
+        equipment = Equipment.objects.select_for_update().get(pk=borrow_request.equipment_id)
+        member = get_object_or_404(Member.objects.select_for_update(), user=borrow_request.user)
+        borrow = (
+            Borrow.objects
+            .select_for_update()
+            .filter(
+                member=member,
+                equipment=equipment,
+                status__in=['Active', 'Overdue'],
+            )
+            .order_by('-created_at')
+            .first()
+        )
+
+        today = date.today()
+        if borrow:
+            borrow.status = 'Returned'
+            borrow.return_date = today
+            if today > borrow.due_date:
+                borrow.penalty = (today - borrow.due_date).days * equipment.daily_penalty
+            _append_note(borrow, f'Return verified from request #{borrow_request.id} by {request.user.get_username()} on {today.isoformat()}.')
+            borrow.save(update_fields=['status', 'return_date', 'penalty', 'notes'])
+
+        borrow_request.status = 'returned'
+        borrow_request.save(update_fields=['status', 'updated_at'])
+
+        equipment.status = 'available'
+        equipment.save(update_fields=['status'])
+
+    messages.success(request, f'Return for {borrow_request.equipment.name} was verified successfully.')
+    return redirect('dashboard:borrowings')
 
 
 @admin_required

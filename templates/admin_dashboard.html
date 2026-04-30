@@ -199,49 +199,40 @@
                 </article>
             </section>
 
-            <section id="requests" class="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div class="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <section id="requests" class="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <h2 class="text-lg font-semibold tracking-tight">Borrowing Requests</h2>
-                        <p class="mt-1 text-sm text-slate-500">Review pending equipment borrowing requests before they become active loans.</p>
+                        <h2 class="text-lg font-semibold tracking-tight">Pending Requests</h2>
+                        <p class="mt-1 text-sm text-slate-500">Borrow and return requests waiting for admin action.</p>
                     </div>
-                    <span class="w-fit rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">{{ pending_count|default:"0" }} pending</span>
+                    <a href="{% url 'dashboard:borrowings' %}#requests" class="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700">
+                        View Requests
+                    </a>
                 </div>
 
-                <div class="divide-y divide-slate-100">
-                    {% for request_item in pending_requests %}
-                        <div class="grid gap-4 px-6 py-5 lg:grid-cols-[1.5fr_1.5fr_1fr_auto] lg:items-center">
-                            <div>
-                                <p class="font-medium text-slate-900">{{ request_item.full_name|default:request_item.user.get_full_name|default:request_item.user.username }}</p>
-                                <p class="mt-1 text-xs text-slate-400">{{ request_item.student_id }}</p>
-                            </div>
-                            <div>
-                                <p class="font-medium text-slate-700">{{ request_item.equipment.name }}</p>
-                                <p class="mt-1 text-xs text-slate-400">{{ request_item.equipment.category|default:"Uncategorized" }} · {{ request_item.equipment.get_status_display }}</p>
-                            </div>
-                            <div class="text-sm text-slate-500">
-                                <p>{{ request_item.borrow_date|date:"M j, Y" }} to {{ request_item.expected_return_date|date:"M j, Y" }}</p>
-                            </div>
-                            <div class="flex gap-2">
-                                <form method="post" action="{% url 'dashboard:approve_request' request_item.id %}">
-                                    {% csrf_token %}
-                                    <button type="submit" class="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">
-                                        Approve
-                                    </button>
-                                </form>
-                                <form method="post" action="{% url 'dashboard:reject_request' request_item.id %}">
-                                    {% csrf_token %}
-                                    <button type="submit" class="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-red-50 hover:text-red-700">
-                                        Reject
-                                    </button>
-                                </form>
-                            </div>
+                <div class="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr_220px] lg:items-end">
+                    <div>
+                        <div class="mb-2 flex items-center justify-between text-sm">
+                            <span class="font-medium text-slate-700">Borrow Requests</span>
+                            <span class="font-semibold text-amber-700">{{ pending_borrow_count|default:"0" }}</span>
                         </div>
-                    {% empty %}
-                        <div class="px-6 py-8 text-center text-sm text-slate-500">
-                            No pending borrowing requests right now.
+                        <div class="h-4 overflow-hidden rounded-full bg-amber-100">
+                            <div class="h-full rounded-full bg-amber-500" style="width: {{ pending_borrow_pct|default:'0' }}%"></div>
                         </div>
-                    {% endfor %}
+                    </div>
+                    <div>
+                        <div class="mb-2 flex items-center justify-between text-sm">
+                            <span class="font-medium text-slate-700">Return Verification</span>
+                            <span class="font-semibold text-violet-700">{{ pending_return_count|default:"0" }}</span>
+                        </div>
+                        <div class="h-4 overflow-hidden rounded-full bg-violet-100">
+                            <div class="h-full rounded-full bg-violet-600" style="width: {{ pending_return_pct|default:'0' }}%"></div>
+                        </div>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 p-4 text-center">
+                        <p class="text-3xl font-semibold tracking-tight text-slate-950">{{ total_pending_request_count|default:"0" }}</p>
+                        <p class="mt-1 text-xs font-medium text-slate-500">total pending</p>
+                    </div>
                 </div>
             </section>
 

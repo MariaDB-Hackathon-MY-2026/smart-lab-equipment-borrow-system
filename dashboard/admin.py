@@ -1,7 +1,7 @@
 from django.contrib import admin
 from datetime import date, timedelta
 
-from .models import Borrow, Equipment, Member
+from .models import Borrow, BorrowRequest, Equipment, Member
 
 
 def add_weekdays(start_date, weekdays):
@@ -60,3 +60,11 @@ class BorrowAdmin(admin.ModelAdmin):
     def reject_requests(self, request, queryset):
         updated = queryset.filter(status='Pending').update(status='Rejected')
         self.message_user(request, f'{updated} request(s) rejected.')
+
+
+@admin.register(BorrowRequest)
+class BorrowRequestAdmin(admin.ModelAdmin):
+    list_display = ('full_name', 'student_id', 'equipment', 'borrow_date', 'expected_return_date', 'status', 'updated_at')
+    list_filter = ('status', 'borrow_date', 'expected_return_date')
+    search_fields = ('full_name', 'student_id', 'email', 'equipment__name', 'equipment__serial_number')
+    list_select_related = ('user', 'equipment')

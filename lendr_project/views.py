@@ -12,7 +12,7 @@ from .forms import BorrowRequestForm, LoginForm, ProfileUpdateForm, UserRegistra
 from dashboard.models import BorrowRequest, Equipment
 
 
-OPEN_BORROW_REQUEST_STATUSES = ['pending', 'approved', 'return_pending', 'returned']
+OPEN_BORROW_REQUEST_STATUSES = ['pending', 'approved', 'return_pending']
 
 
 def login_view(request):
@@ -82,14 +82,15 @@ def user_dashboard(request, section='dashboard'):
     )
 
     history_requests = list(user_requests)
+    return_request_id = request.GET.get('return_request', '').strip()
     for borrow_request in history_requests:
         borrow_request.days_remaining = (borrow_request.expected_return_date - today).days
+        borrow_request.should_open_return_modal = str(borrow_request.id) == return_request_id
 
-    existing_request_equipment_ids = [
-        borrow_request.equipment_id
-        for borrow_request in history_requests
-        if borrow_request.status in OPEN_BORROW_REQUEST_STATUSES
-    ]
+    existing_requests_by_equipment = {}
+    for borrow_request in history_requests:
+        if borrow_request.status in OPEN_BORROW_REQUEST_STATUSES and borrow_request.equipment_id not in existing_requests_by_equipment:
+            existing_requests_by_equipment[borrow_request.equipment_id] = borrow_request
 
     equipment_list = Equipment.objects.order_by('name')
     equipment_query = request.GET.get('q', '').strip()
@@ -112,14 +113,19 @@ def user_dashboard(request, section='dashboard'):
     if selected_category:
         equipment_list = equipment_list.filter(category=selected_category)
 
+    equipment_items = list(equipment_list)
+    for equipment in equipment_items:
+        user_request = existing_requests_by_equipment.get(equipment.id)
+        equipment.user_request_status = user_request.status if user_request else ''
+        equipment.user_request_id = user_request.id if user_request else None
+
     context = {
         'member': member,
         'section': section,
-        'equipment_list': equipment_list,
+        'equipment_list': equipment_items,
         'equipment_query': equipment_query,
         'equipment_categories': equipment_categories,
         'selected_category': selected_category,
-        'existing_request_equipment_ids': existing_request_equipment_ids,
         'borrow_requests': history_requests,
         'recent_requests': history_requests[:5],
         'borrow_form': BorrowRequestForm(),
@@ -196,6 +202,44 @@ def request_return(request, request_id):
     borrow_request.status = 'return_pending'
     borrow_request.save(update_fields=['status', 'updated_at'])
     messages.success(request, f'Return request for {borrow_request.equipment.name} was submitted.')
+    return redirect('user-history')
+
+
+@user_required
+@require_POST
+def cancel_borrow_request(request, request_id):
+    borrow_request = get_object_or_404(
+        BorrowRequest.objects.select_related('equipment'),
+        pk=request_id,
+        user=request.user,
+    )
+
+    if borrow_request.status != 'pending':
+        messages.warning(request, 'Only waiting borrow requests can be cancelled.')
+        return redirect('user-history')
+
+    equipment_name = borrow_request.equipment.name
+    borrow_request.delete()
+    messages.success(request, f'Borrow request for {equipment_name} was cancelled.')
+    return redirect('user-history')
+
+
+@user_required
+@require_POST
+def cancel_return_request(request, request_id):
+    borrow_request = get_object_or_404(
+        BorrowRequest.objects.select_related('equipment'),
+        pk=request_id,
+        user=request.user,
+    )
+
+    if borrow_request.status != 'return_pending':
+        messages.warning(request, 'Only return-pending requests can be cancelled.')
+        return redirect('user-history')
+
+    borrow_request.status = 'approved'
+    borrow_request.save(update_fields=['status', 'updated_at'])
+    messages.success(request, f'Return request for {borrow_request.equipment.name} was cancelled.')
     return redirect('user-history')
 
 
