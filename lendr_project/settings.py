@@ -25,6 +25,21 @@ def load_env_file(env_path: Path) -> None:
 load_env_file(BASE_DIR / '.env')
 
 
+def resolve_env_path(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    candidate = Path(value).expanduser()
+    if candidate.exists():
+        return str(candidate)
+
+    fallback = BASE_DIR / candidate.name
+    if fallback.exists():
+        return str(fallback)
+
+    return None
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -93,9 +108,9 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
             'ssl': {
-                'ca': os.getenv('DB_SSL_CA', ''),
+                'ca': resolve_env_path(os.getenv('DB_SSL_CA')),
                 'check_hostname': True,
-            } if os.getenv('DB_SSL_CA') else {},
+            } if resolve_env_path(os.getenv('DB_SSL_CA')) else {},
         },
     }
 }

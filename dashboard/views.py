@@ -48,6 +48,61 @@ def _equipment_queryset(request):
     return equipment, query, status
 
 
+def _borrowing_queryset(request):
+    borrowings = (
+        Borrow.objects
+        .select_related('member__user', 'equipment')
+        .order_by('-borrow_date', '-created_at')
+    )
+    query = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+
+    if query:
+        borrowings = borrowings.filter(
+            Q(member__user__first_name__icontains=query)
+            | Q(member__user__last_name__icontains=query)
+            | Q(member__user__username__icontains=query)
+            | Q(member__member_id__icontains=query)
+            | Q(equipment__name__icontains=query)
+            | Q(equipment__category__icontains=query)
+            | Q(equipment__serial_number__icontains=query)
+        )
+    if status:
+        borrowings = borrowings.filter(status=status)
+
+    return borrowings, query, status
+
+
+def _overdue_queryset(request):
+    today = date.today()
+    overdue = (
+        Borrow.objects
+        .select_related('member__user', 'equipment')
+        .filter(
+            Q(status='Overdue')
+            | (
+                Q(due_date__lt=today)
+                & ~Q(status__in=['Returned', 'Rejected'])
+            )
+        )
+        .order_by('due_date', '-created_at')
+    )
+    query = request.GET.get('q', '').strip()
+
+    if query:
+        overdue = overdue.filter(
+            Q(member__user__first_name__icontains=query)
+            | Q(member__user__last_name__icontains=query)
+            | Q(member__user__username__icontains=query)
+            | Q(member__member_id__icontains=query)
+            | Q(equipment__name__icontains=query)
+            | Q(equipment__category__icontains=query)
+            | Q(equipment__serial_number__icontains=query)
+        )
+
+    return overdue, query, today
+
+
 @admin_required
 def equipment_management(request):
     if request.method == 'POST':
@@ -116,6 +171,45 @@ def deactivate_equipment(request, equipment_id):
     equipment.save(update_fields=['status', 'condition_remarks'])
     messages.success(request, f'{equipment.name} was deactivated.')
     return redirect('dashboard:equipment_management')
+
+
+@admin_required
+def borrowing_records(request):
+    borrowings, query, status = _borrowing_queryset(request)
+    context = {
+        'borrowings': borrowings,
+        'query': query,
+        'selected_status': status,
+        'status_choices': Borrow.STATUS_CHOICES,
+        'total_borrowings': Borrow.objects.count(),
+        'active_count': Borrow.objects.filter(status='Active').count(),
+        'overdue_count': Borrow.objects.filter(status='Overdue').count(),
+        'returned_count': Borrow.objects.filter(status='Returned').count(),
+        'pending_count': Borrow.objects.filter(status='Pending').count(),
+    }
+    return render(request, 'borrowing_records.html', context)
+
+
+@admin_required
+def overdue_records(request):
+    overdue_items, query, today = _overdue_queryset(request)
+
+    for item in overdue_items:
+        item.days_overdue = max((today - item.due_date).days, 0)
+        item.current_penalty = item.penalty if item.penalty is not None else item.calculate_penalty()
+
+    context = {
+        'overdue_items': overdue_items,
+        'query': query,
+        'total_overdue': overdue_items.count(),
+        'flagged_overdue': overdue_items.filter(status='Overdue').count(),
+        'total_penalty_amount': sum(
+            (item.current_penalty or 0) for item in overdue_items
+        ),
+        'longest_overdue_days': max((item.days_overdue for item in overdue_items), default=0),
+        'today': today,
+    }
+    return render(request, 'overdue_records.html', context)
 
 
 @admin_required
