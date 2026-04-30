@@ -9,7 +9,7 @@ import calendar
 from lendr_project.decorators import admin_required
 
 from .forms import EquipmentForm
-from .models import Equipment, Borrow
+from .models import Equipment, Borrow, BorrowRequest
 
 
 def add_weekdays(start_date, weekdays):
@@ -242,10 +242,11 @@ def admin_dashboard(request):
     )
     total_transactions = Borrow.objects.count()
 
+    # Get pending borrowing requests from BorrowRequest model
     pending_requests = (
-        Borrow.objects
-        .filter(status='Pending')
-        .select_related('member__user', 'equipment')
+        BorrowRequest.objects
+        .filter(status='pending')
+        .select_related('user', 'equipment')
         .order_by('created_at')[:10]
     )
 
@@ -324,7 +325,8 @@ def admin_dashboard(request):
         return_date__year=today.year,
     ).count()
 
-    pending_count = Borrow.objects.filter(status='Pending').count()
+    # Count pending requests from BorrowRequest model
+    pending_count = BorrowRequest.objects.filter(status='pending').count()
 
     context = {
         # KPI Cards
@@ -361,54 +363,75 @@ def admin_dashboard(request):
 @admin_required
 @require_POST
 def approve_borrow_request(request, borrow_id):
+    """Approve a borrowing request and create an active Borrow record."""
     with transaction.atomic():
-        borrow = get_object_or_404(
-            Borrow.objects.select_for_update().select_related('equipment', 'member__user'),
+        # Get the borrowing request
+        borrow_request = get_object_or_404(
+            BorrowRequest.objects.select_for_update().select_related('user', 'equipment'),
             pk=borrow_id,
         )
 
-        if borrow.status != 'Pending':
+        if borrow_request.status != 'pending':
             messages.warning(request, 'Only pending borrowing requests can be approved.')
             return redirect('dashboard:overview')
 
-        equipment = Equipment.objects.select_for_update().get(pk=borrow.equipment_id)
+        equipment = Equipment.objects.select_for_update().get(pk=borrow_request.equipment_id)
         if equipment.status != 'available':
             messages.error(request, f'{equipment.name} is not available, so this request cannot be approved.')
             return redirect('dashboard:overview')
 
+        # Update the BorrowRequest status
+        borrow_request.status = 'approved'
+        borrow_request.save(update_fields=['status'])
+
+        # Create a new Borrow record
         approved_date = date.today()
         due_date = add_weekdays(approved_date, 5)
-
-        borrow.status = 'Active'
-        borrow.borrow_date = approved_date
-        borrow.due_date = due_date
-        borrow.return_date = due_date
-        _append_note(borrow, f'Approved by {request.user.get_username()} on {date.today().isoformat()}.')
-        borrow.save(update_fields=['status', 'borrow_date', 'due_date', 'return_date', 'notes'])
+        
+        # Get or create member for the user
+        from .models import Member
+        member, created = Member.objects.get_or_create(
+            user=borrow_request.user,
+            defaults={
+                'member_id': borrow_request.student_id,
+                'phone': borrow_request.phone_number,
+            }
+        )
+        
+        # Create the Borrow record
+        Borrow.objects.create(
+            member=member,
+            equipment=equipment,
+            borrow_date=approved_date,
+            due_date=due_date,
+            return_date=due_date,
+            status='Active',
+            notes=f'Approved from request #{borrow_request.id} by {request.user.get_username()} on {date.today().isoformat()}.'
+        )
 
         equipment.status = 'borrowed'
         equipment.save(update_fields=['status'])
 
-    messages.success(request, f'Borrowing request for {borrow.equipment.name} was approved.')
+    messages.success(request, f'Borrowing request for {borrow_request.equipment.name} was approved.')
     return redirect('dashboard:overview')
 
 
 @admin_required
 @require_POST
 def reject_borrow_request(request, borrow_id):
+    """Reject a borrowing request by updating its status."""
     with transaction.atomic():
-        borrow = get_object_or_404(
-            Borrow.objects.select_for_update().select_related('equipment', 'member__user'),
+        borrow_request = get_object_or_404(
+            BorrowRequest.objects.select_for_update().select_related('user', 'equipment'),
             pk=borrow_id,
         )
 
-        if borrow.status != 'Pending':
+        if borrow_request.status != 'pending':
             messages.warning(request, 'Only pending borrowing requests can be rejected.')
             return redirect('dashboard:overview')
 
-        borrow.status = 'Rejected'
-        _append_note(borrow, f'Rejected by {request.user.get_username()} on {date.today().isoformat()}.')
-        borrow.save(update_fields=['status', 'notes'])
+        borrow_request.status = 'denied'
+        borrow_request.save(update_fields=['status'])
 
-    messages.success(request, f'Borrowing request for {borrow.equipment.name} was rejected.')
+    messages.success(request, f'Borrowing request for {borrow_request.equipment.name} was rejected.')
     return redirect('dashboard:overview')

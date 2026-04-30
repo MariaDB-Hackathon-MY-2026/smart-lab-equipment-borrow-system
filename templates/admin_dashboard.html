@@ -212,15 +212,15 @@
                     {% for request_item in pending_requests %}
                         <div class="grid gap-4 px-6 py-5 lg:grid-cols-[1.5fr_1.5fr_1fr_auto] lg:items-center">
                             <div>
-                                <p class="font-medium text-slate-900">{{ request_item.member.get_full_name|default:request_item.member.user.username }}</p>
-                                <p class="mt-1 text-xs text-slate-400">{{ request_item.member.member_id }}</p>
+                                <p class="font-medium text-slate-900">{{ request_item.full_name|default:request_item.user.get_full_name|default:request_item.user.username }}</p>
+                                <p class="mt-1 text-xs text-slate-400">{{ request_item.student_id }}</p>
                             </div>
                             <div>
                                 <p class="font-medium text-slate-700">{{ request_item.equipment.name }}</p>
                                 <p class="mt-1 text-xs text-slate-400">{{ request_item.equipment.category|default:"Uncategorized" }} · {{ request_item.equipment.get_status_display }}</p>
                             </div>
                             <div class="text-sm text-slate-500">
-                                <p>{{ request_item.borrow_date|date:"M j, Y" }} to {{ request_item.due_date|date:"M j, Y" }}</p>
+                                <p>{{ request_item.borrow_date|date:"M j, Y" }} to {{ request_item.expected_return_date|date:"M j, Y" }}</p>
                             </div>
                             <div class="flex gap-2">
                                 <form method="post" action="{% url 'dashboard:approve_request' request_item.id %}">
