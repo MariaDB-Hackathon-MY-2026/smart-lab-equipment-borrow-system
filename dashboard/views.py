@@ -435,3 +435,164 @@ def reject_borrow_request(request, borrow_id):
 
     messages.success(request, f'Borrowing request for {borrow_request.equipment.name} was rejected.')
     return redirect('dashboard:overview')
+
+
+@admin_required
+def analytics(request):
+    """
+    Analytics page with detailed borrowing statistics and reports.
+    """
+    today = date.today()
+    
+    # Get query parameters for filtering
+    status_filter = request.GET.get('status', '')
+    equipment_filter = request.GET.get('equipment', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    # ─── BORROW HISTORY LOGS ───────────────────────────────────────
+    borrow_history = Borrow.objects.select_related(
+        'member__user', 'equipment'
+    ).order_by('-created_at', '-borrow_date')
+    
+    # Apply filters
+    if status_filter:
+        borrow_history = borrow_history.filter(status=status_filter)
+    if equipment_filter:
+        borrow_history = borrow_history.filter(
+            Q(equipment__name__icontains=equipment_filter) |
+            Q(equipment__category__icontains=equipment_filter)
+        )
+    if date_from:
+        borrow_history = borrow_history.filter(borrow_date__gte=date_from)
+    if date_to:
+        borrow_history = borrow_history.filter(borrow_date__lte=date_to)
+    
+    # Paginate borrow history
+    from django.core.paginator import Paginator
+    paginator = Paginator(borrow_history, 20)  # Show 20 records per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # ─── MONTHLY BORROW ANALYTICS (last 12 months) ────────────────
+    monthly_stats = []
+    month_labels = []
+    max_monthly = 1
+    
+    for i in range(11, -1, -1):
+        first_day = (today.replace(day=1) - timedelta(days=i * 28)).replace(day=1)
+        _, last = calendar.monthrange(first_day.year, first_day.month)
+        last_day = first_day.replace(day=last)
+        
+        borrows = Borrow.objects.filter(
+            borrow_date__gte=first_day, borrow_date__lte=last_day
+        ).count()
+        returns = Borrow.objects.filter(
+            return_date__gte=first_day, return_date__lte=last_day
+        ).count()
+        
+        monthly_stats.append({
+            'month': first_day.strftime('%B %Y'),
+            'borrows': borrows,
+            'returns': returns,
+            'borrow_pct': round((borrows / max_monthly) * 100) if max_monthly else 0,
+            'return_pct': round((returns / max_monthly) * 100) if max_monthly else 0,
+        })
+        month_labels.append(first_day.strftime('%b'))
+        
+        if borrows > max_monthly:
+            max_monthly = borrows
+        if returns > max_monthly:
+            max_monthly = returns
+    
+    # Recalculate percentages with actual max
+    for m in monthly_stats:
+        m['borrow_pct'] = round((m['borrows'] / max_monthly) * 100) if max_monthly else 0
+        m['return_pct'] = round((m['returns'] / max_monthly) * 100) if max_monthly else 0
+    
+    # ─── MOST BORROWED EQUIPMENT (top 10) ────────────────────────
+    top_equipment = (
+        Equipment.objects
+        .annotate(borrow_count=Count('borrowings'))
+        .order_by('-borrow_count')[:10]
+    )
+    max_borrow = top_equipment[0].borrow_count if top_equipment else 1
+    most_borrowed = [
+        {
+            'name': eq.name,
+            'serial_number': eq.serial_number or 'N/A',
+            'category': eq.category or 'Uncategorized',
+            'count': eq.borrow_count,
+            'pct': round((eq.borrow_count / max_borrow) * 100) if max_borrow else 0,
+        }
+        for eq in top_equipment
+    ]
+    
+    # ─── OVERDUE REPORTS ────────────────────────────────────────────
+    overdue_items = (
+        Borrow.objects
+        .filter(status='Overdue')
+        .select_related('member__user', 'equipment')
+        .order_by('due_date')
+    )
+    
+    # Calculate overdue details
+    overdue_reports = []
+    for borrow in overdue_items:
+        days_overdue = (today - borrow.due_date).days
+        penalty = borrow.penalty if borrow.penalty is not None else borrow.calculate_penalty()
+        overdue_reports.append({
+            'id': borrow.id,
+            'equipment_name': borrow.equipment.name,
+            'member_name': borrow.member.get_full_name(),
+            'member_id': borrow.member.member_id,
+            'due_date': borrow.due_date,
+            'days_overdue': days_overdue,
+            'penalty': penalty,
+            'pct': min(100, days_overdue * 12),
+        })
+    
+    # Calculate overdue statistics
+    total_overdue = len(overdue_reports)
+    total_penalty_amount = sum(r['penalty'] or 0 for r in overdue_reports)
+    longest_overdue_days = max((r['days_overdue'] for r in overdue_reports), default=0)
+    
+    # ─── SUMMARY STATISTICS ────────────────────────────────────────
+    total_borrows = Borrow.objects.count()
+    total_returns = Borrow.objects.filter(status='Returned').count()
+    total_active = Borrow.objects.filter(status='Active').count()
+    total_rejected = Borrow.objects.filter(status='Rejected').count()
+    
+    context = {
+        # Borrow History
+        'page_obj': page_obj,
+        'status_filter': status_filter,
+        'equipment_filter': equipment_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'status_choices': Borrow.STATUS_CHOICES,
+        
+        # Monthly Analytics
+        'monthly_stats': monthly_stats,
+        'month_labels': month_labels,
+        
+        # Most Borrowed Equipment
+        'most_borrowed': most_borrowed,
+        
+        # Overdue Reports
+        'overdue_reports': overdue_reports,
+        'total_overdue': total_overdue,
+        'total_penalty_amount': total_penalty_amount,
+        'longest_overdue_days': longest_overdue_days,
+        
+        # Summary Statistics
+        'total_borrows': total_borrows,
+        'total_returns': total_returns,
+        'total_active': total_active,
+        'total_rejected': total_rejected,
+        
+        # Today's date
+        'today': today,
+    }
+    
+    return render(request, 'analytics.html', context)
