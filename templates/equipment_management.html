@@ -297,6 +297,9 @@
                                         <td class="px-6 py-4 text-slate-600">RM {{ item.daily_penalty }}</td>
                                         <td class="px-6 py-4">
                                             <div class="flex justify-end gap-2">
+                                                <a href="{% url 'dashboard:equipment_history' item.id %}" class="rounded-2xl bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                                                    History
+                                                </a>
                                                 <a href="{% url 'dashboard:edit_equipment' item.id %}" class="rounded-2xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700">
                                                     Edit
                                                 </a>

@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncMonth
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
@@ -8,6 +9,12 @@ import calendar
 
 from lendr_project.decorators import admin_required
 
+from .db_services import (
+    fetch_equipment_history,
+    finalize_borrow_return_in_db,
+    is_mariadb_connection,
+    refresh_overdue_borrows,
+)
 from .forms import EquipmentForm
 from .models import Equipment, Borrow, BorrowRequest, Member
 
@@ -31,6 +38,13 @@ def _append_note(borrow, note):
         borrow.notes = note
 
 
+def _month_start(base_date, months_ago):
+    month_index = base_date.month - 1 - months_ago
+    year = base_date.year + (month_index // 12)
+    month = (month_index % 12) + 1
+    return date(year, month, 1)
+
+
 def _equipment_queryset(request):
     equipment = Equipment.objects.order_by('name')
     query = request.GET.get('q', '').strip()
@@ -49,6 +63,7 @@ def _equipment_queryset(request):
 
 
 def _borrowing_queryset(request):
+    refresh_overdue_borrows()
     borrowings = (
         Borrow.objects
         .select_related('member__user', 'equipment')
@@ -74,6 +89,7 @@ def _borrowing_queryset(request):
 
 
 def _overdue_queryset(request):
+    refresh_overdue_borrows()
     today = date.today()
     overdue = (
         Borrow.objects
@@ -174,6 +190,20 @@ def deactivate_equipment(request, equipment_id):
 
 
 @admin_required
+def equipment_history(request, equipment_id):
+    equipment = get_object_or_404(Equipment, pk=equipment_id)
+    history_rows = fetch_equipment_history(equipment.id)
+    latest_window_end = history_rows[0]['row_end'] if history_rows else None
+    context = {
+        'equipment_item': equipment,
+        'history_rows': history_rows,
+        'temporal_supported': is_mariadb_connection(),
+        'latest_window_end': latest_window_end,
+    }
+    return render(request, 'equipment_history.html', context)
+
+
+@admin_required
 def borrowing_records(request):
     borrowings, query, status = _borrowing_queryset(request)
     pending_borrow_requests = (
@@ -238,6 +268,7 @@ def admin_dashboard(request):
     LendR+ Admin Analytics Dashboard view.
     Aggregates all KPI data, chart data, and table records.
     """
+    refresh_overdue_borrows()
     today = date.today()
 
     # ─── KPI CARDS ───────────────────────────────────────────────
@@ -487,10 +518,14 @@ def verify_return_request(request, borrow_id):
 
         today = date.today()
         if borrow:
-            borrow.status = 'Returned'
-            borrow.return_date = today
-            if today > borrow.due_date:
-                borrow.penalty = (today - borrow.due_date).days * equipment.daily_penalty
+            penalty = finalize_borrow_return_in_db(borrow.id, today)
+            borrow.refresh_from_db(fields=['status', 'return_date', 'penalty'])
+
+            if penalty is None:
+                borrow.status = 'Returned'
+                borrow.return_date = today
+                if today > borrow.due_date:
+                    borrow.penalty = (today - borrow.due_date).days * equipment.daily_penalty
             _append_note(borrow, f'Return verified from request #{borrow_request.id} by {request.user.get_username()} on {today.isoformat()}.')
             borrow.save(update_fields=['status', 'return_date', 'penalty', 'notes'])
 
@@ -509,6 +544,7 @@ def analytics(request):
     """
     Analytics page with detailed borrowing statistics and reports.
     """
+    refresh_overdue_borrows()
     today = date.today()
     
     # Get query parameters for filtering
@@ -545,37 +581,62 @@ def analytics(request):
     monthly_stats = []
     month_labels = []
     max_monthly = 1
-    
+    request_borrow_counts = {
+        item['month']: item['count']
+        for item in (
+            BorrowRequest.objects
+            .annotate(month=TruncMonth('borrow_date'))
+            .values('month')
+            .annotate(count=Count('id'))
+        )
+    }
+    request_return_counts = {
+        item['month']: item['count']
+        for item in (
+            BorrowRequest.objects
+            .filter(status='returned')
+            .annotate(month=TruncMonth('updated_at'))
+            .values('month')
+            .annotate(count=Count('id'))
+        )
+    }
+    legacy_return_counts = {
+        item['month']: item['count']
+        for item in (
+            Borrow.objects
+            .filter(return_date__isnull=False)
+            .annotate(month=TruncMonth('return_date'))
+            .values('month')
+            .annotate(count=Count('id'))
+        )
+    }
+
     for i in range(11, -1, -1):
-        first_day = (today.replace(day=1) - timedelta(days=i * 28)).replace(day=1)
-        _, last = calendar.monthrange(first_day.year, first_day.month)
-        last_day = first_day.replace(day=last)
-        
-        borrows = Borrow.objects.filter(
-            borrow_date__gte=first_day, borrow_date__lte=last_day
-        ).count()
-        returns = Borrow.objects.filter(
-            return_date__gte=first_day, return_date__lte=last_day
-        ).count()
-        
+        first_day = _month_start(today, i)
+        borrows = request_borrow_counts.get(first_day, 0)
+        returns = max(
+            request_return_counts.get(first_day, 0),
+            legacy_return_counts.get(first_day, 0),
+        )
+
         monthly_stats.append({
             'month': first_day.strftime('%B %Y'),
             'borrows': borrows,
             'returns': returns,
-            'borrow_pct': round((borrows / max_monthly) * 100) if max_monthly else 0,
-            'return_pct': round((returns / max_monthly) * 100) if max_monthly else 0,
+            'borrow_pct': 0,
+            'return_pct': 0,
         })
         month_labels.append(first_day.strftime('%b'))
-        
-        if borrows > max_monthly:
-            max_monthly = borrows
-        if returns > max_monthly:
-            max_monthly = returns
-    
+        max_monthly = max(max_monthly, borrows, returns)
+
     # Recalculate percentages with actual max
     for m in monthly_stats:
         m['borrow_pct'] = round((m['borrows'] / max_monthly) * 100) if max_monthly else 0
         m['return_pct'] = round((m['returns'] / max_monthly) * 100) if max_monthly else 0
+        if m['borrows'] > 0:
+            m['borrow_pct'] = max(m['borrow_pct'], 10)
+        if m['returns'] > 0:
+            m['return_pct'] = max(m['return_pct'], 10)
     
     # ─── MOST BORROWED EQUIPMENT (top 10) ────────────────────────
     top_equipment = (
@@ -626,9 +687,9 @@ def analytics(request):
     
     # ─── SUMMARY STATISTICS ────────────────────────────────────────
     total_borrows = Borrow.objects.count()
-    total_returns = Borrow.objects.filter(status='Returned').count()
+    total_returns = BorrowRequest.objects.filter(status='returned').count()
     total_active = Borrow.objects.filter(status='Active').count()
-    total_rejected = Borrow.objects.filter(status='Rejected').count()
+    total_rejected = BorrowRequest.objects.filter(status='denied').count()
     
     context = {
         # Borrow History

@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User
 from django.db import models
 
+from .db_services import calculate_penalty_in_db
+
 
 class Member(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='member')
@@ -68,6 +70,10 @@ class Borrow(models.Model):
 
     def calculate_penalty(self):
         from django.utils import timezone
+
+        db_penalty = calculate_penalty_in_db(self.id, timezone.now().date()) if self.pk else None
+        if db_penalty is not None:
+            return db_penalty
 
         if self.status == 'Overdue' and not self.return_date:
             overdue_days = (timezone.now().date() - self.due_date).days
