@@ -1,0 +1,13 @@
+.git
+.github
+.env
+.env.*
+venv
+.venv
+__pycache__
+*.pyc
+db.sqlite3
+media
+staticfiles
+background.gif
+static/img/background.gif

@@ -20,6 +20,8 @@
 - [Stripe Payment Setup](#stripe-payment-setup)
 - [Email Setup](#email-setup)
 - [Testing](#testing)
+- [GitHub Actions CI](#github-actions-ci)
+- [Render Deployment](#render-deployment)
 - [Operational Notes](#operational-notes)
 
 ## Overview
@@ -173,7 +175,13 @@ Create a `.env` file in the project root. Do not commit this file because it con
 
 ```env
 # Django
+DEBUG=True
+SECRET_KEY=django-insecure-change-this-for-local-development
 DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+CSRF_TRUSTED_ORIGINS=
+SECURE_SSL_REDIRECT=False
+SESSION_COOKIE_SECURE=False
+CSRF_COOKIE_SECURE=False
 
 # Database
 DB_NAME=lendr
@@ -347,6 +355,67 @@ Run the application tests:
 ```powershell
 venv\Scripts\python.exe manage.py test equipment lending accounts
 ```
+
+## GitHub Actions CI
+
+The repository includes `.github/workflows/ci.yml`, following the lab CI pattern:
+
+```text
+push to GitHub -> install dependencies -> run python manage.py check
+```
+
+After pushing the repo to GitHub, open the repository Actions tab and confirm the latest `Django CI` run is green before deploying.
+
+## Render Deployment
+
+This project is prepared for Render using the lab workflow:
+
+1. Commit the deployment files: `build.sh`, `render.yaml`, `Dockerfile`, `.dockerignore`, `.github/workflows/ci.yml`, and the updated settings.
+2. Push the `updated-application` branch to GitHub.
+3. In Render, create a new Web Service from the GitHub repository, or use Render Blueprints with `render.yaml`.
+4. Use these service commands if creating the Web Service manually:
+
+```text
+Build Command: bash build.sh
+Start Command: gunicorn lendr.wsgi:application
+```
+
+5. Add the required Render environment variables:
+
+```env
+DEBUG=False
+SECRET_KEY=<generate in Render>
+DJANGO_ALLOWED_HOSTS=.onrender.com
+CSRF_TRUSTED_ORIGINS=https://*.onrender.com
+SECURE_SSL_REDIRECT=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+DB_NAME=<production database name>
+DB_USER=<production database user>
+DB_PASSWORD=<production database password>
+DB_HOST=<production database host>
+DB_PORT=3306
+DB_SSL=True
+STRIPE_SECRET_KEY=<stripe secret key>
+STRIPE_PUBLISHABLE_KEY=<stripe publishable key>
+STRIPE_CURRENCY=myr
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=<smtp host>
+EMAIL_PORT=587
+EMAIL_HOST_USER=<smtp username>
+EMAIL_HOST_PASSWORD=<smtp password>
+EMAIL_USE_TLS=True
+DEFAULT_FROM_EMAIL=<verified sender email>
+```
+
+6. Deploy the latest GitHub commit. Render will install dependencies, collect static files, apply migrations, and start Gunicorn.
+7. After the first successful deploy, open the Render Shell and create the production admin account:
+
+```bash
+python manage.py createsuperuser
+```
+
+The app uses MariaDB/MySQL. Render's native managed database is PostgreSQL, so keep using a MySQL-compatible production database provider and place those credentials in Render's environment variables.
 
 ## Operational Notes
 
