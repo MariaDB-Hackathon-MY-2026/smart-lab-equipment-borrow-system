@@ -1,0 +1,105 @@
+{% extends 'layouts/base.html' %}
+{% block content %}
+<div class="border-b border-gray-200 pb-4 mb-8 flex items-center justify-between flex-wrap gap-4">
+    <h1 class="text-2xl font-semibold tracking-normal text-gray-800 uppercase">Penalties Management</h1>
+    <div class="flex items-center gap-3 flex-wrap">
+        <button class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm">
+            <i class="fa fa-sliders"></i> Manage Access Rules
+        </button>
+        <button class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm">
+            <i class="fa fa-plus-circle"></i> Manage Penalty Rates
+        </button>
+    </div>
+</div>
+
+<div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-visible">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Penalty Records</h4>
+    </div>
+    <div class="p-6">
+        <div class="filter-controls flex flex-wrap gap-4 items-end mb-5">
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</label>
+                <select class="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 w-[160px]">
+                    <option selected>All Status</option>
+                    <option>Unpaid</option>
+                    <option>Paid</option>
+                    <option>Waived</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Date</label>
+                <input type="date" class="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 w-[160px]">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Search Username</label>
+                <input type="text" placeholder="Enter username..." class="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 w-[200px] placeholder-gray-300">
+            </div>
+            <button class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                <i class="fa fa-refresh"></i> Reset
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table id="dataTables-example" class="w-full">
+                <colgroup>
+                    <col style="width:14%;">
+                    <col style="width:16%;">
+                    <col style="width:20%;">
+                    <col style="width:16%;">
+                    <col style="width:14%;">
+                    <col style="width:20%;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Equipment</th>
+                        <th>Violation Type</th>
+                        <th>Date / Time</th>
+                        <th>Penalty Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for penalty in penalties %}
+                    <tr>
+                        <td>{{ penalty.lending_request.borrower.username }}</td>
+                        <td>{{ penalty.lending_request.equipment.name }}</td>
+                        <td>{{ penalty.days_overdue }} overdue day(s)</td>
+                        <td>{{ penalty.created_at }}</td>
+                        <td>RM {{ penalty.amount }}</td>
+                        <td>
+                            {% if penalty.status == 'unpaid' %}
+                            <div class="flex flex-wrap items-center gap-2">
+                                <form method="post" action="{% url 'lending:update_penalty' penalty.id %}" onsubmit="return confirm('Mark this penalty as paid? This cannot be reversed.');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="paid">
+                                    <input type="hidden" name="next" value="{% url 'lending:overdue' %}">
+                                    <button class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"><i class="fa fa-check"></i> Paid</button>
+                                </form>
+                                <form method="post" action="{% url 'lending:update_penalty' penalty.id %}" onsubmit="return confirm('Waive this penalty? This cannot be reversed.');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="waived">
+                                    <input type="hidden" name="next" value="{% url 'lending:overdue' %}">
+                                    <button class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg transition-colors"><i class="fa fa-ban"></i> Waive</button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="status-badge status-{{ penalty.status }}">{{ penalty.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty-state text-center py-16 text-gray-700">
+                            <i class="fa fa-search text-5xl block mb-4 opacity-20"></i>
+                            No penalties found with the current filters
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

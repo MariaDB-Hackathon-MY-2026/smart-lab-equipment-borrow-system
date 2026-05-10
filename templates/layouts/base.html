@@ -1,0 +1,286 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>lendr+ | Smart Lab Equipment Borrow System</title>
+    <link rel="icon" href="{% static 'img/lendr-small-logo.png' %}" type="image/icon type">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/lendr-tailwind.css' %}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+                    colors: {
+                        surface: '#FFFFFF',
+                        quiet: '#F5F5F7',
+                        ink: '#1D1D1F',
+                        muted: '#6E6E73',
+                        line: '#E5E5EA',
+                        action: '#155DA3',
+                        actionDark: '#0B3D73',
+                        signal: '#FF4E32',
+                        softBlue: '#EAF4FF',
+                        softSignal: '#FFF1EE',
+                        lendrBlue: '#155DA3',
+                        lendrBlueDark: '#01050A',
+                        lendrCoral: '#FF4E32'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .navbar-side {
+            transform: translateX(-260px);
+            transition: transform 0.3s ease;
+        }
+        @media (min-width: 1024px) {
+            .navbar-side { transform: translateX(0) !important; }
+            #page-wrapper { margin-left: 260px !important; }
+            .navbar-top-links { display: flex !important; }
+            .mobile-only { display: none !important; }
+        }
+        .navbar-side.in { transform: translateX(0) !important; }
+
+        @media (max-width: 1023px) {
+            .navbar-side { background-color: #01050A !important; }
+            #sidebar-overlay {
+                background: rgba(0,0,0,0.78) !important;
+                z-index: 39 !important;
+            }
+            .navbar-top-links { display: none !important; }
+            .mobile-only { display: block !important; }
+        }
+
+        .sidebar-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.85);
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+        .sidebar-nav-link:hover {
+            color: #FF4E32;
+            background: rgba(255,255,255,0.07);
+            text-decoration: none;
+        }
+        .sidebar-nav-link.active-menu {
+            color: #FF4E32;
+            background: rgba(255,78,50,0.14);
+            position: relative;
+            padding-left: 26px;
+        }
+        .sidebar-nav-link.active-menu::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 7px solid #FF4E32;
+        }
+        .sidebar-nav-link i { width: 16px; text-align: center; }
+
+        select,
+        .dataTables_wrapper .dataTables_length select {
+            border-radius: 8px !important;
+            overflow: hidden;
+        }
+        select option { border-radius: 8px; }
+
+        .elevated-card { box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08) !important; }
+        table.dataTable,
+        #dataTables-example { width: 100% !important; border-collapse: collapse !important; }
+        #dataTables-example { table-layout: fixed; }
+        table.dataTable thead th,
+        #dataTables-example thead th {
+            background: #f9fafb;
+            border-bottom: 2px solid #e5e7eb;
+            padding: 11px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+            white-space: nowrap;
+            text-align: left;
+        }
+        table.dataTable tbody td,
+        #dataTables-example tbody td {
+            padding: 13px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 14px;
+            color: #374151;
+            vertical-align: middle;
+            text-align: left;
+        }
+        table.dataTable tbody tr:hover,
+        #dataTables-example tbody tr:hover { background: #f9fafb; }
+        #dataTables-example tbody td.empty-state { text-align: center !important; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .status-pending { background: #dbeafe; color: #1e40af; }
+        .status-approved { background: #dcfce7; color: #166534; }
+        .status-denied { background: #fee2e2; color: #991b1b; }
+        .status-borrowed { background: #fef9c3; color: #854d0e; }
+        .status-return_requested { background: #ede9fe; color: #5b21b6; }
+        .status-returned { background: #f3f4f6; color: #6b7280; }
+        .status-overdue { background: #fee2e2; color: #991b1b; }
+        .status-paid { background: #dcfce7; color: #166534; }
+        .status-unpaid { background: #fef9c3; color: #854d0e; }
+        .status-waived { background: #f3f4f6; color: #6b7280; }
+
+        .card-green { border-left: 4px solid #155DA3; }
+        .card-blue  { border-left: 4px solid #3b82f6; }
+        .card-amber { border-left: 4px solid #FF4E32; }
+        .card-red   { border-left: 4px solid #ef4444; }
+        .bg-white.rounded-xl.shadow-sm {
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08) !important;
+        }
+        button[class*="bg-green-600"],
+        button[class*="hover:bg-green-700"],
+        a[class*="bg-green-600"],
+        a[class*="hover:bg-green-700"] {
+            color: #ffffff !important;
+            background-color: #155DA3 !important;
+        }
+        button[class*="bg-green-600"]:hover,
+        button[class*="hover:bg-green-700"]:hover,
+        a[class*="bg-green-600"]:hover,
+        a[class*="hover:bg-green-700"]:hover {
+            color: #FF4E32 !important;
+            background-color: #0B3D73 !important;
+        }
+
+        .pod-card.available  { border-top: 4px solid #155DA3; }
+        .pod-card.borrowed   { border-top: 4px solid #f59e0b; }
+        .pod-card.maintenance{ border-top: 4px solid #ef4444; }
+        .pod-card.retired    { border-top: 4px solid #9ca3af; opacity: 0.75; }
+        .pod-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.35px;
+        }
+        .pod-status.available { background: #dbeafe; color: #1e40af; }
+        .pod-status.borrowed { background: #fef9c3; color: #854d0e; }
+        .pod-status.maintenance { background: #fee2e2; color: #991b1b; }
+        .pod-status.retired { background: #f3f4f6; color: #6b7280; }
+
+        ::-webkit-scrollbar { display: none; }
+        * { scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-[#f7f7f5] font-sans antialiased overflow-x-hidden min-h-screen">
+<div id="wrapper" class="min-h-screen">
+    {% if user.is_authenticated %}
+    <header class="fixed top-0 left-0 right-0 z-50 h-[60px] bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6">
+        <button class="navbar-toggle lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none" aria-label="Toggle navigation">
+            <span class="block w-5 h-px bg-current mb-[5px]"></span>
+            <span class="block w-5 h-px bg-current mb-[5px]"></span>
+            <span class="block w-5 h-px bg-current"></span>
+        </button>
+        <a href="{% url 'accounts:dashboard' %}" class="flex items-center gap-3">
+            <img src="{% static 'img/lendr-small-logo.png' %}?v=lendr-small" class="h-9 w-auto" alt="Lendr">
+            <span class="text-xl font-bold tracking-tight text-[#155DA3]">lendr+</span>
+        </a>
+        <div class="navbar-top-links hidden items-center gap-1">
+            <a href="{% url 'accounts:profile' %}" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold hover:bg-blue-100 rounded-lg transition-colors {% if request.resolver_match.app_name == 'accounts' and request.resolver_match.url_name == 'profile' %}bg-blue-50{% endif %}">
+                <i class="fa fa-user-circle"></i> Profile
+            </a>
+            <a href="{% url 'accounts:logout' %}" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold hover:bg-blue-100 rounded-lg transition-colors">
+                <i class="fa fa-sign-out"></i> Log Out
+            </a>
+        </div>
+    </header>
+
+    <aside class="navbar-side fixed top-[60px] left-0 w-[260px] bottom-0 bg-[#01050A] overflow-y-auto z-40">
+        <nav class="sidebar-collapse py-5">
+            <ul id="main-menu" class="space-y-1 px-3">
+                <li><a class="sidebar-nav-link {% if request.resolver_match.app_name == 'accounts' and request.resolver_match.url_name == 'dashboard' %}active-menu{% endif %}" href="{% url 'accounts:dashboard' %}"><i class="fa fa-line-chart fa-fw"></i> Dashboard</a></li>
+                {% if is_portal_admin %}
+                <li><a class="sidebar-nav-link {% if request.resolver_match.app_name == 'equipment' %}active-menu{% endif %}" href="{% url 'equipment:manifest' %}"><i class="fa fa-list-alt fa-fw"></i> Manifest</a></li>
+                <li><a class="sidebar-nav-link {% if request.resolver_match.app_name == 'lending' %}active-menu{% endif %}" href="{% url 'lending:admin_requests' %}"><i class="fa fa-exchange fa-fw"></i> Lending Management</a></li>
+                {% else %}
+                <li><a class="sidebar-nav-link {% if request.resolver_match.app_name == 'equipment' or request.resolver_match.app_name == 'lending' %}active-menu{% endif %}" href="{% url 'equipment:available' %}"><i class="fa fa-exchange fa-fw"></i> Lending Manager</a></li>
+                {% endif %}
+                <li class="mobile-only" style="display:none; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; margin-top: 8px;">
+                    <a class="sidebar-nav-link" href="{% url 'accounts:logout' %}"><i class="fa fa-sign-out fa-fw"></i> Log Out</a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+    <div id="sidebar-overlay" class="fixed inset-0 hidden lg:hidden"></div>
+    {% endif %}
+
+    <main {% if user.is_authenticated %}id="page-wrapper"{% endif %} class="{% if user.is_authenticated %}mt-[60px] min-h-screen p-6 lg:p-8{% else %}min-h-screen{% endif %}">
+        <div {% if user.is_authenticated %}id="page-inner"{% endif %}>
+            {% if messages %}
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    {% for message in messages %}
+                    alert('{{ message|escapejs }}');
+                    {% endfor %}
+                });
+            </script>
+            {% endif %}
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
+{% if user.is_authenticated %}
+<script>
+    (function() {
+        const sidebar = document.querySelector('.navbar-side');
+        const toggle = document.querySelector('.navbar-toggle');
+        const overlay = document.getElementById('sidebar-overlay');
+        function closeSidebar() {
+            sidebar && sidebar.classList.remove('in');
+            overlay && overlay.classList.add('hidden');
+        }
+        function openSidebar() {
+            sidebar && sidebar.classList.add('in');
+            overlay && overlay.classList.remove('hidden');
+        }
+        if (toggle) {
+            toggle.addEventListener('click', function() {
+                if (sidebar.classList.contains('in')) closeSidebar();
+                else openSidebar();
+            });
+        }
+        if (overlay) overlay.addEventListener('click', closeSidebar);
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1024) closeSidebar();
+        });
+    })();
+</script>
+{% endif %}
+</body>
+</html>

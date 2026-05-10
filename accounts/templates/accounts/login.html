@@ -1,0 +1,778 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700;800&display=swap');
+
+    .auth-shell,
+    .auth-shell input,
+    .auth-shell button {
+        font-family: "Poppins", sans-serif;
+    }
+
+    .auth-shell {
+        position: relative;
+        width: 100%;
+        min-height: 100vh;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background:
+            linear-gradient(rgba(1, 5, 10, 0.58), rgba(1, 5, 10, 0.58)),
+            url("{% static 'img/background.gif' %}") center / cover no-repeat fixed,
+            #01050A;
+    }
+
+    .auth-box {
+        position: relative;
+        width: 100%;
+        max-width: 900px;
+        height: 580px;
+        background: rgba(255, 255, 255, 0.87);
+        border-radius: 2.5rem;
+        box-shadow: 0 60px 40px -30px rgba(0, 0, 0, 0.27);
+    }
+
+    .auth-inner {
+        position: absolute;
+        width: calc(100% - 3.6rem);
+        height: calc(100% - 3.6rem);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .forms-wrap {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 50%;
+        height: 100%;
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr;
+        transition: 0.7s ease-in-out;
+    }
+
+    .auth-form {
+        grid-column: 1 / 2;
+        grid-row: 1 / 2;
+        width: 100%;
+        max-width: 320px;
+        height: 100%;
+        margin: 0 auto;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.7rem;
+        opacity: 1;
+        pointer-events: auto;
+        transition: opacity 10ms 350ms;
+    }
+
+    .auth-form.sign-up-form,
+    .auth-form.forgot-password-form {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .auth-stage.sign-up-mode .sign-in-form,
+    .auth-stage.forgot-password-mode .sign-in-form {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .auth-stage.sign-up-mode .sign-up-form,
+    .auth-stage.forgot-password-mode .forgot-password-form {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .auth-stage.sign-up-mode .forms-wrap {
+        left: 50%;
+    }
+
+    .heading h2 {
+        margin: 0 0 0.2rem;
+        color: #000;
+        font-size: 1.9rem;
+        font-weight: 600;
+    }
+
+    .actual-form {
+        width: 100%;
+    }
+
+    .input-wrap {
+        position: relative;
+        height: 35px;
+        margin-bottom: 1.3rem;
+    }
+
+    .input-field {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        border-bottom: 1px solid #000;
+        outline: none;
+        background: transparent;
+        padding: 0;
+        color: #151111;
+        font-size: 0.95rem;
+    }
+
+    .input-field.pwd-input {
+        padding-right: 48px;
+    }
+
+    .input-field.username-check-input {
+        padding-right: 34px;
+    }
+
+    .username-status-icon {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        display: none;
+        transform: translateY(-50%);
+        font-size: 0.9rem;
+    }
+
+    .username-status-icon.is-available {
+        color: #16a34a;
+    }
+
+    .username-status-icon.is-unavailable {
+        color: #dc2626;
+    }
+
+    .username-status-icon.is-visible {
+        display: inline-flex;
+    }
+
+    .password-rules {
+        margin-top: -0.9rem;
+        margin-bottom: 0.8rem;
+        color: #555;
+        font-size: 0.72rem;
+        line-height: 1.35;
+    }
+
+    .password-rules.is-invalid {
+        color: #dc2626;
+    }
+
+    .password-rules.is-valid {
+        color: #16a34a;
+    }
+
+    .input-wrap label {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #000;
+        font-size: 0.95rem;
+        pointer-events: none;
+        transition: 0.3s;
+    }
+
+    .input-field.active {
+        border-bottom-color: #155DA3;
+    }
+
+    .input-field.active + label {
+        top: -2px;
+        font-size: 0.75rem;
+    }
+
+    .toggle-password {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transform: translateY(-50%);
+        border-radius: 0.375rem;
+        border: 0;
+        background: transparent;
+        color: #6b7280;
+        cursor: pointer;
+        z-index: 10;
+    }
+
+    .toggle-password svg {
+        width: 24px;
+        height: 20px;
+        stroke: currentColor;
+        fill: none;
+        stroke-linecap: round;
+    }
+
+    .sign-btn,
+    .sign-btn-main {
+        width: 100%;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border: 0;
+        border-radius: 0.8rem;
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .sign-btn {
+        margin-bottom: 0.3rem;
+        background: #01050A;
+    }
+
+    .sign-btn-main {
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        background: #155DA3;
+    }
+
+    .sign-btn:hover,
+    .sign-btn-main:hover,
+    .carousel-btn:hover {
+        background: #FF4E32;
+    }
+
+    .text,
+    .mobile-account-switch {
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        text-align: center;
+        color: #000;
+        font-size: 0.95rem;
+    }
+
+    .auth-consent-text,
+    .register-consent-text {
+        color: #555;
+        font-size: 0.82rem;
+        line-height: 1.45;
+    }
+
+    .data,
+    .mobile-account-switch-link {
+        border: 0;
+        background: transparent;
+        color: #155DA3;
+        font-weight: 600;
+        text-decoration: underline;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .data:hover,
+    .mobile-account-switch-link:hover {
+        color: #FF4E32;
+    }
+
+    .carousel {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 50%;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        border-radius: 2rem;
+        padding: 2rem 1.5rem;
+        transition: 0.7s ease-in-out;
+    }
+
+    .auth-stage.sign-up-mode .carousel {
+        left: 0;
+    }
+
+    .carousel-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding-top: 0;
+        transform: translateY(-16px);
+    }
+
+    .images-wrapper {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .logo-centered {
+        display: block;
+        max-width: 80%;
+        max-height: 130px;
+        margin: 0 auto 10px;
+        object-fit: contain;
+    }
+
+    .text-slider {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0 1rem;
+        text-align: center;
+    }
+
+    .carousel-content {
+        display: none;
+        width: 100%;
+        text-align: center;
+        animation: fadeIn 0.5s ease;
+    }
+
+    .login-carousel {
+        display: block;
+    }
+
+    .auth-stage.sign-up-mode .login-carousel,
+    .auth-stage.forgot-password-mode .login-carousel {
+        display: none;
+    }
+
+    .auth-stage.sign-up-mode .register-carousel,
+    .auth-stage.forgot-password-mode .forgot-carousel {
+        display: block;
+    }
+
+    .carousel-content h3 {
+        margin-bottom: 0.5rem;
+        color: #155DA3;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .carousel-content p {
+        margin-bottom: 1.5rem;
+        color: #555;
+        font-size: 0.9rem;
+    }
+
+    .carousel-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: 0;
+        border-radius: 0.375rem;
+        background: #155DA3;
+        color: #fff;
+        padding: 10px 25px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .mobile-account-switch {
+        display: none;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 850px) {
+        .auth-shell {
+            padding: 1rem;
+        }
+
+        .auth-box {
+            max-width: 500px;
+            height: auto;
+            overflow: hidden;
+        }
+
+        .auth-inner {
+            position: static;
+            width: auto;
+            height: auto;
+            transform: none;
+            padding: 1.5rem;
+        }
+
+        .forms-wrap {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            left: 0 !important;
+            overflow: hidden;
+        }
+
+        .auth-form {
+            max-width: 100%;
+            padding: 0;
+            transition: transform 0.7s ease, opacity 0.3s ease;
+        }
+
+        .auth-form.sign-up-form,
+        .auth-form.forgot-password-form {
+            transform: translateX(100%);
+        }
+
+        .auth-stage.sign-up-mode .sign-in-form,
+        .auth-stage.forgot-password-mode .sign-in-form {
+            transform: translateX(-100%);
+        }
+
+        .auth-stage.sign-up-mode .sign-up-form,
+        .auth-stage.forgot-password-mode .forgot-password-form {
+            transform: translateX(0);
+        }
+
+        .carousel {
+            display: none;
+        }
+
+        .mobile-account-switch {
+            display: block;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .auth-inner {
+            padding: 1rem;
+        }
+
+        .heading h2 {
+            font-size: 1.65rem;
+        }
+    }
+</style>
+
+<div id="authStage" class="auth-shell auth-stage {% if auth_mode == 'register' %}sign-up-mode{% elif auth_mode == 'forgot' %}forgot-password-mode{% endif %}">
+    <div class="auth-box">
+        <div class="auth-inner">
+            <div class="forms-wrap">
+                <form autocomplete="off" id="login" method="post" class="auth-form sign-in-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="login">
+                    <input type="hidden" name="next" value="{{ next }}">
+                    <div class="heading">
+                        <h2>Welcome Back</h2>
+                        <p class="mobile-account-switch">Don't have an account? <button type="button" class="mobile-account-switch-link register-btn">Create Here</button></p>
+                    </div>
+                    <div class="actual-form">
+                        <div class="input-wrap">
+                            <input type="text" class="input-field" name="identifier" required>
+                            <label>Username</label>
+                        </div>
+                        <div class="input-wrap">
+                            <input type="password" class="input-field pwd-input" name="password" id="password" required>
+                            <label>Password</label>
+                            <button type="button" class="toggle-password" data-target="password" aria-label="Press and hold to view password" title="Press and hold to view">
+                                <svg viewBox="0 0 28 20" aria-hidden="true">
+                                    <path d="M3 13.5C4.8 6.8 9.2 3 14 3s9.2 3.8 11 10.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+                                    <circle cx="14" cy="13.5" r="4.2" fill="none" stroke="currentColor" stroke-width="2.8"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="submit" class="sign-btn"><i class="fas fa-sign-in-alt"></i> Log In</button>
+                        <p class="text">
+                            Forgot Your Credentials?
+                            <button type="button" class="data forgot-link">Recover Here</button>
+                        </p>
+                    </div>
+                </form>
+
+                <form autocomplete="off" id="register" method="post" class="auth-form sign-up-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="register">
+                    <input type="hidden" name="next" value="{{ next }}">
+                    <div class="heading">
+                        <h2>Let's Get Started</h2>
+                        <p class="mobile-account-switch">Have an account? <button type="button" class="mobile-account-switch-link login-btn">Login</button></p>
+                    </div>
+                    <div class="actual-form">
+                        <div class="input-wrap">
+                            <input type="text" name="username" id="registerUsername" class="input-field username-check-input" autocomplete="username" required>
+                            <label>Username</label>
+                            <span id="usernameStatusIcon" class="username-status-icon" aria-hidden="true"></span>
+                        </div>
+                        <div class="input-wrap">
+                            <input type="text" name="name" class="input-field" maxlength="150" autocomplete="name" required>
+                            <label>Name</label>
+                        </div>
+                        <div class="input-wrap">
+                            <input type="email" name="email" class="input-field" required>
+                            <label>Email</label>
+                        </div>
+                        <div class="input-wrap">
+                            <input type="password" name="password" class="input-field pwd-input" minlength="8" id="password_register" required>
+                            <label>Password</label>
+                            <button type="button" class="toggle-password" data-target="password_register" aria-label="Press and hold to view password" title="Press and hold to view">
+                                <svg viewBox="0 0 28 20" aria-hidden="true">
+                                    <path d="M3 13.5C4.8 6.8 9.2 3 14 3s9.2 3.8 11 10.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+                                    <circle cx="14" cy="13.5" r="4.2" fill="none" stroke="currentColor" stroke-width="2.8"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="registerPasswordRules" class="password-rules">At least 8 characters with 1 uppercase, 1 lowercase, 1 number, and 1 special character.</p>
+                        <button type="submit" class="sign-btn"><i class="fas fa-user-plus"></i> Register</button>
+                        <p class="text register-consent-text">
+                            By registering, you agree to the Terms of Service and Privacy Policy of lendr+.
+                        </p>
+                    </div>
+                </form>
+
+                <form autocomplete="off" id="forgot" method="post" class="auth-form forgot-password-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reset">
+                    <input type="hidden" name="next" value="{{ next }}">
+                    <div class="heading">
+                        <h2>Oops! Forgot Your Password?</h2>
+                        <p class="mobile-account-switch">Changed Your Mind? <button type="button" class="mobile-account-switch-link login-link">Login Here</button></p>
+                    </div>
+                    <div class="actual-form">
+                        <div class="input-wrap">
+                            <input type="email" class="input-field" name="email" required>
+                            <label>Email</label>
+                        </div>
+                        <button type="submit" class="sign-btn"><i class="fas fa-paper-plane"></i> Send Reset Link</button>
+                        <p class="text auth-consent-text">
+                            By resetting, you agree to the Terms of Service and Privacy Policy of lendr+.
+                        </p>
+                    </div>
+                </form>
+            </div>
+
+            <div class="carousel">
+                <div class="carousel-container">
+                    <div class="images-wrapper">
+                        <img src="{% static 'img/lendr-large-logo.png' %}" class="logo-centered" alt="lendr+">
+                    </div>
+                    <div class="text-slider">
+                        <div class="carousel-content login-carousel">
+                            <h3>Not Registered Yet?</h3>
+                            <button type="button" class="carousel-btn toggle-carousel register-btn"><i class="fas fa-user-plus"></i> Register Now</button>
+                        </div>
+                        <div class="carousel-content register-carousel">
+                            <h3>Have an Account?</h3>
+                            <button type="button" class="carousel-btn toggle-carousel login-btn"><i class="fas fa-sign-in-alt"></i> Login Now</button>
+                        </div>
+                        <div class="carousel-content forgot-carousel">
+                            <h3>Changed Your Mind?</h3>
+                            <button type="button" class="carousel-btn login-link"><i class="fas fa-arrow-left"></i> Back to Login</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const authStage = document.getElementById('authStage');
+
+    function activateInputs() {
+        document.querySelectorAll('.input-field').forEach(function(input) {
+            const syncState = function() {
+                input.classList.toggle('active', input === document.activeElement || input.value !== '');
+            };
+            input.addEventListener('focus', syncState);
+            input.addEventListener('blur', syncState);
+            input.addEventListener('input', syncState);
+            syncState();
+        });
+    }
+
+    function showRegister() {
+        authStage.classList.add('sign-up-mode');
+        authStage.classList.remove('forgot-password-mode');
+    }
+
+    function showLogin() {
+        authStage.classList.remove('sign-up-mode', 'forgot-password-mode');
+    }
+
+    function showForgot() {
+        authStage.classList.add('forgot-password-mode');
+        authStage.classList.remove('sign-up-mode');
+    }
+
+    document.querySelectorAll('.register-btn').forEach(function(button) {
+        button.addEventListener('click', showRegister);
+    });
+
+    document.querySelectorAll('.login-btn, .login-link').forEach(function(button) {
+        button.addEventListener('click', showLogin);
+    });
+
+    document.querySelectorAll('.forgot-link').forEach(function(button) {
+        button.addEventListener('click', showForgot);
+    });
+
+    const usernameInput = document.getElementById('registerUsername');
+    const usernameIcon = document.getElementById('usernameStatusIcon');
+    const registerForm = document.getElementById('register');
+    const registerPasswordInput = document.getElementById('password_register');
+    const passwordRules = document.getElementById('registerPasswordRules');
+    const usernameCheckUrl = "{% url 'accounts:username_availability' %}";
+    const passwordRulePattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+    let usernameCheckTimer = null;
+    let usernameState = {
+        value: '',
+        available: false,
+    };
+
+    function setUsernameFeedback(status, message) {
+        if (!usernameIcon) return;
+        usernameIcon.className = 'username-status-icon';
+        usernameIcon.innerHTML = '';
+        if (message) {
+            usernameInput.setCustomValidity(message);
+            usernameInput.title = message;
+        } else {
+            usernameInput.setCustomValidity('');
+            usernameInput.title = '';
+        }
+
+        if (status === 'available') {
+            usernameIcon.classList.add('is-visible', 'is-available');
+            usernameIcon.innerHTML = '<i class="fas fa-check"></i>';
+            usernameInput.setCustomValidity('');
+            usernameInput.title = '';
+        } else if (status === 'unavailable') {
+            usernameIcon.classList.add('is-visible', 'is-unavailable');
+            usernameIcon.innerHTML = '<i class="fas fa-times"></i>';
+        }
+    }
+
+    async function checkUsernameAvailability() {
+        if (!usernameInput) return false;
+        const username = usernameInput.value.trim();
+        usernameState = { value: username, available: false };
+
+        if (!username) {
+            setUsernameFeedback('unavailable', 'Please fill in username.');
+            return false;
+        }
+
+        try {
+            const response = await fetch(usernameCheckUrl + '?username=' + encodeURIComponent(username), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const result = await response.json();
+            usernameState = { value: username, available: Boolean(result.available) };
+            setUsernameFeedback(result.available ? 'available' : 'unavailable', result.message);
+            return Boolean(result.available);
+        } catch (error) {
+            setUsernameFeedback('unavailable', 'Unable to check username right now.');
+            return false;
+        }
+    }
+
+    function syncPasswordRules() {
+        if (!registerPasswordInput || !passwordRules) return false;
+        const isValid = passwordRulePattern.test(registerPasswordInput.value);
+        passwordRules.classList.toggle('is-valid', isValid);
+        passwordRules.classList.toggle('is-invalid', registerPasswordInput.value !== '' && !isValid);
+        return isValid;
+    }
+
+    if (usernameInput) {
+        usernameInput.addEventListener('input', function() {
+            window.clearTimeout(usernameCheckTimer);
+            setUsernameFeedback(null, '');
+            usernameCheckTimer = window.setTimeout(checkUsernameAvailability, 350);
+        });
+        usernameInput.addEventListener('blur', checkUsernameAvailability);
+    }
+
+    if (registerPasswordInput) {
+        registerPasswordInput.addEventListener('input', syncPasswordRules);
+    }
+
+    if (registerForm) {
+        registerForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const usernameIsAvailable = usernameState.value === usernameInput.value.trim() && usernameState.available
+                ? true
+                : await checkUsernameAvailability();
+            const passwordIsValid = syncPasswordRules();
+
+            if (!usernameInput.value.trim()) {
+                usernameInput.focus();
+                return;
+            }
+
+            if (!usernameIsAvailable) {
+                usernameInput.focus();
+                return;
+            }
+
+            if (!passwordIsValid) {
+                registerPasswordInput.focus();
+                return;
+            }
+
+            HTMLFormElement.prototype.submit.call(registerForm);
+        });
+    }
+
+    function showPasswordForHold(button) {
+        const input = document.getElementById(button.dataset.target);
+        if (!input) return;
+        input.type = 'text';
+        button.classList.add('is-revealing');
+    }
+
+    function hidePasswordForHold(button) {
+        const input = document.getElementById(button.dataset.target);
+        if (!input) return;
+        input.type = 'password';
+        button.classList.remove('is-revealing');
+    }
+
+    document.querySelectorAll('.toggle-password').forEach(function(button) {
+        button.addEventListener('mousedown', function(event) {
+            event.preventDefault();
+            showPasswordForHold(button);
+        });
+        button.addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            showPasswordForHold(button);
+        }, { passive: false });
+        ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(function(eventName) {
+            button.addEventListener(eventName, function() {
+                hidePasswordForHold(button);
+            });
+        });
+        button.addEventListener('keydown', function(event) {
+            if (event.key !== ' ' && event.key !== 'Enter') return;
+            event.preventDefault();
+            showPasswordForHold(button);
+        });
+        button.addEventListener('keyup', function(event) {
+            if (event.key !== ' ' && event.key !== 'Enter') return;
+            hidePasswordForHold(button);
+        });
+        button.addEventListener('blur', function() {
+            hidePasswordForHold(button);
+        });
+    });
+
+    activateInputs();
+</script>
+{% endblock %}

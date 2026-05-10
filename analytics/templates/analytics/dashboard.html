@@ -1,0 +1,158 @@
+{% extends 'layouts/base.html' %}
+{% block content %}
+<div class="mb-8 pb-5 border-b border-gray-200 flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-semibold text-gray-800 tracking-tight">lendr+ ANALYTICS</h1>
+    </div>
+    <button disabled class="inline-flex items-center gap-2 bg-gray-100 text-gray-400 text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-not-allowed">
+        <i class="fa fa-print"></i> Print
+    </button>
+</div>
+
+<div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+    <div class="flex flex-wrap items-end gap-4">
+        <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filter By Type</label>
+            <select class="form-control px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500" style="width: 160px;">
+                <option>Both</option>
+                <option>Requests</option>
+                <option>Penalties</option>
+            </select>
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filter By Parameter</label>
+            <select class="form-control px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500" style="width: 160px;">
+                <option>Date</option>
+                <option>Month</option>
+                <option>Quarterly</option>
+            </select>
+        </div>
+        <button class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm">
+            <i class="fa fa-filter"></i> Apply Filters
+        </button>
+        <button class="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+            <i class="fa fa-refresh"></i> Reset
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5 mb-6 dashboard-cards">
+    <div class="stat-card bg-white rounded-xl p-6 shadow-sm card-green hover:-translate-y-1 transition-transform duration-200 cursor-default">
+        <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Equipment</p>
+        <div class="text-4xl font-bold text-gray-900">{{ stats.equipment_total }}</div>
+    </div>
+    <div class="stat-card bg-white rounded-xl p-6 shadow-sm card-blue hover:-translate-y-1 transition-transform duration-200 cursor-default">
+        <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Available</p>
+        <div class="text-4xl font-bold text-gray-900">{{ stats.available_total }}</div>
+    </div>
+    <div class="stat-card bg-white rounded-xl p-6 shadow-sm card-amber hover:-translate-y-1 transition-transform duration-200 cursor-default">
+        <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Pending</p>
+        <div class="text-4xl font-bold text-gray-900">{{ stats.pending_total }}</div>
+    </div>
+    <div class="stat-card bg-white rounded-xl p-6 shadow-sm card-red hover:-translate-y-1 transition-transform duration-200 cursor-default">
+        <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Overdue</p>
+        <div class="text-4xl font-bold text-gray-900">{{ stats.overdue_total }}</div>
+    </div>
+    <div class="stat-card bg-white rounded-xl p-6 shadow-sm card-amber hover:-translate-y-1 transition-transform duration-200 cursor-default">
+        <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">Unpaid Penalties</p>
+        <div class="text-3xl font-bold text-gray-900">RM {{ stats.unpaid_penalty_total }}</div>
+    </div>
+</div>
+
+<div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+        <i class="fa fa-bar-chart-o text-green-600"></i>
+        <h2 class="text-base font-semibold text-gray-800">Requests Made vs Penalties Issued</h2>
+    </div>
+    <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Request Status</h3>
+                <div class="space-y-3">
+                    {% for row in request_status_counts %}
+                    <div>
+                        <div class="flex justify-between text-sm text-gray-700 mb-1">
+                            <span class="capitalize">{{ row.status }}</span>
+                            <span>{{ row.total }}</span>
+                        </div>
+                        <div class="h-3 rounded bg-gray-100 overflow-hidden">
+                            <div class="h-full bg-[#155DA3]" style="width: {% widthratio row.total 10 100 %}%"></div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div style="text-align: center; padding: 80px 20px;">
+                        <i class="fa fa-bar-chart-o" style="font-size: 64px; color: #d1d5db; display: block; margin-bottom: 16px;"></i>
+                        <h3 style="color: #9ca3af; font-weight: 500; font-size: 18px; margin-bottom: 8px;">No Data Found</h3>
+                        <p style="color: #d1d5db; font-size: 14px;">There are no requests recorded for the selected period.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Equipment Status</h3>
+                <div class="space-y-3">
+                    {% for row in equipment_status_counts %}
+                    <div>
+                        <div class="flex justify-between text-sm text-gray-700 mb-1">
+                            <span class="capitalize">{{ row.status }}</span>
+                            <span>{{ row.total }}</span>
+                        </div>
+                        <div class="h-3 rounded bg-gray-100 overflow-hidden">
+                            <div class="h-full bg-[#FF4E32]" style="width: {% widthratio row.total 10 100 %}%"></div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div style="text-align: center; padding: 80px 20px;">
+                        <i class="fa fa-filter" style="font-size: 64px; color: #d1d5db; display: block; margin-bottom: 16px;"></i>
+                        <h3 style="color: #9ca3af; font-weight: 500; font-size: 18px; margin-bottom: 8px;">Please Select Filters</h3>
+                        <p style="color: #d1d5db; font-size: 14px;">Select type of data and parameter above, then click "Apply Filters" to view analytics.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="text-base font-semibold text-gray-800">Requests and Equipment Records</h2>
+    </div>
+    <div class="p-6">
+        <div class="overflow-x-auto">
+            <table class="w-full" id="dataTables-example">
+                <thead>
+                    <tr>
+                        <th>Record Type</th>
+                        <th>Status</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in request_status_counts %}
+                    <tr>
+                        <td>Request</td>
+                        <td><span class="status-badge status-{{ row.status }}">{{ row.status }}</span></td>
+                        <td>{{ row.total }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% for row in equipment_status_counts %}
+                    <tr>
+                        <td>Equipment</td>
+                        <td>{{ row.status }}</td>
+                        <td>{{ row.total }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="empty-state text-center py-16 text-gray-700">
+                            <i class="fa fa-search text-5xl block mb-4 opacity-20"></i>
+                            No records found with the current filters
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

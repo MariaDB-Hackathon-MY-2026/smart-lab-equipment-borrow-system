@@ -1,0 +1,368 @@
+{% extends 'layouts/base.html' %}
+{% block content %}
+<div class="border-b border-gray-200 pb-4 mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <h1 class="text-2xl font-semibold tracking-normal text-gray-800 uppercase">Lending Management</h1>
+    <button type="button" onclick="openPenaltiesModal()" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-100">
+        <i class="fa fa-exclamation-circle"></i>
+        View Penalties
+    </button>
+</div>
+
+<div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-visible">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Lending Requests</h4>
+    </div>
+    <div class="p-6">
+        <div class="overflow-x-auto">
+            <table id="dataTables-example" class="w-full">
+                <colgroup>
+                    <col style="width:13%;">
+                    <col style="width:17%;">
+                    <col style="width:18%;">
+                    <col style="width:12%;">
+                    <col style="width:20%;">
+                    <col style="width:20%;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Equipment</th>
+                        <th>Borrowing Period</th>
+                        <th>Status</th>
+                        <th>Purpose</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in requests %}
+                    <tr>
+                        <td>{{ item.borrower.username }}</td>
+                        <td>{{ item.equipment.name }}</td>
+                        <td>{{ item.requested_from }} - {{ item.requested_until }}</td>
+                        <td><span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span></td>
+                        <td>{{ item.purpose }}</td>
+                        <td>
+                            <button
+                                type="button"
+                                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#155DA3] hover:bg-[#0B3D73] rounded-lg transition-colors shadow-sm"
+                                onclick="openManageRequestModal(this)"
+                                data-request-id="{{ item.id }}"
+                                data-username="{{ item.borrower.username }}"
+                                data-email="{{ item.borrower.email|default:'-' }}"
+                                data-equipment-name="{{ item.equipment.name }}"
+                                data-asset-tag="{{ item.equipment.asset_tag }}"
+                                data-category="{{ item.equipment.category.name }}"
+                                data-location="{{ item.equipment.lab_location }}"
+                                data-requested-from="{{ item.requested_from }}"
+                                data-requested-until="{{ item.requested_until }}"
+                                data-purpose="{{ item.purpose }}"
+                                data-status="{{ item.status }}"
+                                data-status-label="{{ item.get_status_display }}"
+                                data-admin-note="{{ item.equipment.notes|default:'-' }}"
+                                data-created-at="{{ item.created_at|date:'M d, Y, h:i A' }}"
+                                data-approve-url="{% url 'lending:approve' item.id %}"
+                                data-deny-url="{% url 'lending:deny' item.id %}"
+                                data-borrowed-url="{% url 'lending:borrowed' item.id %}"
+                                data-returned-url="{% url 'lending:returned' item.id %}"
+                                data-penalty-amount="{{ item.penalty.amount|default:'0.00' }}"
+                                data-penalty-note="{{ item.penalty.note|default:'' }}"
+                            >
+                                <i class="fa fa-cog"></i>
+                                Manage
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty-state text-center py-16 text-gray-700">
+                            <i class="fa fa-search text-5xl block mb-4 opacity-20"></i>
+                            No lending requests found with the current filters
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="penaltiesModal" class="hidden fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closePenaltiesModal()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Penalties</h3>
+            <button type="button" onclick="closePenaltiesModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+        <div class="px-7 py-6 max-h-[70vh] overflow-y-auto">
+            <div class="overflow-x-auto">
+                <table class="dataTable w-full">
+                    <thead>
+                        <tr>
+                            <th>Borrower</th>
+                            <th>Equipment</th>
+                            <th>Borrow Date</th>
+                            <th>Penalty Status</th>
+                            <th>Penalty Rate</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for penalty in penalties %}
+                        <tr>
+                            <td>
+                                <span class="block font-semibold text-gray-900">{{ penalty.lending_request.borrower.username }}</span>
+                                <span class="block text-xs text-gray-500 mt-1">{{ penalty.lending_request.borrower.email|default:'-' }}</span>
+                            </td>
+                            <td>
+                                <span class="block font-semibold text-gray-900">{{ penalty.lending_request.equipment.name }}</span>
+                                <span class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mt-1">{{ penalty.lending_request.equipment.asset_tag }}</span>
+                            </td>
+                            <td>{{ penalty.lending_request.requested_from }} - {{ penalty.lending_request.requested_until }}</td>
+                            <td><span class="status-badge status-{{ penalty.status }}">{{ penalty.get_status_display }}</span></td>
+                            <td class="font-semibold text-gray-900">RM {{ penalty.amount }}</td>
+                            <td>
+                                {% if penalty.status == 'unpaid' %}
+                                <div class="flex flex-wrap gap-2">
+                                    <form method="post" action="{% url 'lending:update_penalty' penalty.id %}" onsubmit="return confirm('Mark this penalty as paid? This cannot be reversed.');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="paid">
+                                        <input type="hidden" name="next" value="{% url 'lending:admin_requests' %}">
+                                        <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-[#155DA3] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0B3D73]">
+                                            <i class="fa fa-check"></i>
+                                            Paid
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{% url 'lending:update_penalty' penalty.id %}" onsubmit="return confirm('Waive this penalty? This cannot be reversed.');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="waived">
+                                        <input type="hidden" name="next" value="{% url 'lending:admin_requests' %}">
+                                        <button type="submit" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-100">
+                                            <i class="fa fa-ban"></i>
+                                            Waive
+                                        </button>
+                                    </form>
+                                </div>
+                                {% else %}
+                                <span class="text-sm font-semibold text-gray-400">Locked</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="empty-state text-center py-12 text-gray-700">
+                                <i class="fa fa-check-circle text-5xl block mb-4 opacity-20"></i>
+                                No penalties found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <button type="button" onclick="closePenaltiesModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-sm">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="manageRequestModal" class="hidden fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeManageRequestModal()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Booking Details</h3>
+            <button type="button" onclick="closeManageRequestModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+
+        <div class="px-7 py-6 max-h-[70vh] overflow-y-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Request ID</p>
+                    <p id="manageRequestId" class="text-sm text-gray-900 mt-2 break-words"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Submitted At</p>
+                    <p id="manageCreatedAt" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Username</p>
+                    <p id="manageUsername" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Email</p>
+                    <p id="manageEmail" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Equipment</p>
+                    <p id="manageEquipmentName" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Asset ID</p>
+                    <p id="manageAssetTag" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Category</p>
+                    <p id="manageCategory" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Location</p>
+                    <p id="manageLocation" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Borrow From</p>
+                    <p id="manageRequestedFrom" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Borrow Until</p>
+                    <p id="manageRequestedUntil" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Status</p>
+                    <p class="mt-2"><span id="manageStatus" class="status-badge"></span></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Admin Note</p>
+                    <p id="manageAdminNote" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div class="md:col-span-2">
+                    <p class="text-sm font-semibold text-gray-500">Purpose</p>
+                    <p id="managePurpose" class="text-sm text-gray-900 mt-2 leading-6 whitespace-pre-wrap"></p>
+                </div>
+            </div>
+
+            <div id="managePendingActions" class="hidden mt-7 pt-6 border-t border-gray-100 flex flex-wrap justify-end gap-3">
+                <form id="manageDenyForm" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors"><i class="fa fa-ban"></i> Deny</button>
+                </form>
+                <form id="manageApproveForm" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#155DA3] hover:bg-[#0B3D73] rounded-xl transition-colors shadow-sm"><i class="fa fa-check"></i> Approve</button>
+                </form>
+            </div>
+
+            <div id="manageApprovedActions" class="hidden mt-7 pt-6 border-t border-gray-100">
+                <form id="manageBorrowedForm" method="post" class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
+                    {% csrf_token %}
+                    <div class="w-full sm:w-48">
+                        <label for="manageBorrowCode" class="block text-sm font-semibold text-gray-500 mb-2">Borrow Key</label>
+                        <input
+                            id="manageBorrowCode"
+                            name="borrow_code"
+                            type="text"
+                            inputmode="numeric"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            autocomplete="one-time-code"
+                            required
+                            placeholder="6 digits"
+                            class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold tracking-[0.25em] text-gray-900 shadow-sm focus:border-[#155DA3] focus:outline-none focus:ring-2 focus:ring-[#155DA3]/15"
+                        >
+                    </div>
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-sm"><i class="fa fa-key"></i> Borrow</button>
+                </form>
+            </div>
+
+            <div id="manageReturnActions" class="hidden mt-7 pt-6 border-t border-gray-100">
+                <form id="manageReturnedForm" method="post" class="grid grid-cols-1 gap-4">
+                    {% csrf_token %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="managePenaltyAmount" class="block text-sm font-semibold text-gray-500 mb-2">Penalty Amount <span class="text-gray-400">(MYR)</span></label>
+                            <input id="managePenaltyAmount" name="penalty_amount" type="number" min="0" step="0.01" value="0.00" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-[#155DA3] focus:outline-none focus:ring-2 focus:ring-[#155DA3]/15">
+                        </div>
+                        <div>
+                            <label for="managePenaltyNote" class="block text-sm font-semibold text-gray-500 mb-2">Penalty Note</label>
+                            <input id="managePenaltyNote" name="penalty_note" type="text" placeholder="e.g. damaged lens cover" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-[#155DA3] focus:outline-none focus:ring-2 focus:ring-[#155DA3]/15">
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-sm"><i class="fa fa-check"></i> Complete Return</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <button type="button" onclick="closeManageRequestModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openPenaltiesModal() {
+        const modal = document.getElementById('penaltiesModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePenaltiesModal() {
+        const modal = document.getElementById('penaltiesModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function setManageText(id, value) {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value || '-';
+    }
+
+    function setActionVisibility(status) {
+        document.getElementById('managePendingActions').classList.toggle('hidden', status !== 'pending');
+        document.getElementById('manageApprovedActions').classList.toggle('hidden', status !== 'approved');
+        document.getElementById('manageReturnActions').classList.toggle('hidden', status !== 'return_requested');
+    }
+
+    function openManageRequestModal(button) {
+        const modal = document.getElementById('manageRequestModal');
+        if (!modal) return;
+        const data = button.dataset;
+
+        setManageText('manageRequestId', data.requestId);
+        setManageText('manageCreatedAt', data.createdAt);
+        setManageText('manageUsername', data.username);
+        setManageText('manageEmail', data.email);
+        setManageText('manageEquipmentName', data.equipmentName);
+        setManageText('manageAssetTag', data.assetTag);
+        setManageText('manageCategory', data.category);
+        setManageText('manageLocation', data.location);
+        setManageText('manageRequestedFrom', data.requestedFrom);
+        setManageText('manageRequestedUntil', data.requestedUntil);
+        setManageText('manageAdminNote', data.adminNote);
+        setManageText('managePurpose', data.purpose);
+
+        const statusBadge = document.getElementById('manageStatus');
+        if (statusBadge) {
+            statusBadge.className = 'status-badge status-' + data.status;
+            statusBadge.textContent = data.statusLabel || data.status || '-';
+        }
+
+        document.getElementById('manageApproveForm').action = data.approveUrl;
+        document.getElementById('manageDenyForm').action = data.denyUrl;
+        document.getElementById('manageBorrowedForm').action = data.borrowedUrl;
+        document.getElementById('manageReturnedForm').action = data.returnedUrl;
+        document.getElementById('managePenaltyAmount').value = data.penaltyAmount || '0.00';
+        document.getElementById('managePenaltyNote').value = data.penaltyNote || '';
+        const borrowCodeInput = document.getElementById('manageBorrowCode');
+        if (borrowCodeInput) borrowCodeInput.value = '';
+        setActionVisibility(data.status);
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeManageRequestModal() {
+        const modal = document.getElementById('manageRequestModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+</script>
+{% endblock %}

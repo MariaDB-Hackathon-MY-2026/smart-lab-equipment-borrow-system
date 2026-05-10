@@ -1,0 +1,481 @@
+{% extends 'layouts/base.html' %}
+{% block content %}
+<div class="border-b border-gray-200 pb-4 mb-8 flex items-center justify-between flex-wrap gap-4">
+    <h1 class="text-2xl font-semibold tracking-normal text-gray-800 uppercase">Equipment Manifest</h1>
+    <div class="flex items-center gap-3 flex-wrap">
+        <button type="button" onclick="openCategoryModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-blue-100 rounded-lg transition-colors shadow-sm">
+            <i class="fa fa-tags"></i> Manage Categories
+        </button>
+        <button type="button" onclick="openCreateEquipmentModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm">
+            <i class="fa fa-plus-circle"></i> Create New Equipment
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 dashboard-cards" id="podCardsContainer">
+    {% for item in equipments %}
+    <div class="pod-card {{ item.status }} bg-white rounded-xl shadow-sm overflow-hidden hover:-translate-y-1 transition-transform duration-200">
+        <div class="p-4">
+            <div class="mb-3 pb-3 border-b border-gray-100">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <i class="{{ item.category_icon_class }} text-gray-400"></i>
+                            {{ item.name }}
+                        </div>
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-0.5">{{ item.asset_tag }}</p>
+                    </div>
+                    <span class="pod-status {{ item.status }}">{{ item.status }}</span>
+                </div>
+            </div>
+            <div class="space-y-2.5 text-sm">
+                <div class="flex items-start justify-between gap-4">
+                    <span class="text-gray-500 font-medium">Category</span>
+                    <span class="text-gray-800 font-semibold text-right">{{ item.category.name }}</span>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <span class="text-gray-500 font-medium">Location</span>
+                    <span class="text-gray-800 font-semibold text-right">{{ item.lab_location }}</span>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <span class="text-gray-500 font-medium">Condition</span>
+                    <span class="text-gray-800 font-semibold text-right">{{ item.condition }}</span>
+                </div>
+                <div class="flex items-start justify-between gap-4">
+                    <span class="text-gray-500 font-medium">Daily Penalty Rate</span>
+                    <span class="text-gray-800 font-semibold text-right">RM {{ item.daily_penalty_rate }}</span>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                <a href="{% url 'equipment:edit' item.id %}" class="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm">
+                    <i class="fa fa-pencil"></i> Edit
+                </a>
+                {% if item.status == 'borrowed' %}
+                <button type="button" disabled title="Borrowed equipment cannot be deleted until it is returned." class="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-gray-400 bg-gray-50 border border-gray-200 rounded-lg cursor-not-allowed">
+                    <i class="fa fa-trash"></i> Delete
+                </button>
+                {% else %}
+                <form method="post" action="{% url 'equipment:delete' item.id %}">
+                    {% csrf_token %}
+                    <button class="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="fa fa-trash"></i> Delete
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full bg-white rounded-xl p-10 shadow-sm border border-gray-100 text-center text-gray-700">
+        <i class="fa fa-search text-5xl block mb-4 opacity-20"></i>
+        No equipment records found
+    </div>
+    {% endfor %}
+</div>
+
+<div id="categoryModal" class="hidden fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeCategoryModal()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Manage Categories</h3>
+                <p class="text-sm text-gray-500 mt-1">Create, update, or remove product categories used by equipment records.</p>
+            </div>
+            <button type="button" onclick="closeCategoryModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+
+        <div class="max-h-[75vh] overflow-y-auto">
+            <div class="px-7 py-6 border-b border-gray-100">
+                <form method="post" action="{% url 'equipment:manage_category' %}" class="category-action-form grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-end">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Category Name <span class="text-red-500">*</span></label>
+                        <input name="name" required placeholder="e.g. Optics" class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                    </div>
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm">
+                        <i class="fa fa-plus-circle"></i> Create
+                    </button>
+                </form>
+            </div>
+
+            <div class="px-7 py-6">
+                <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Active Categories</h4>
+                <div id="categoryRows" class="space-y-3" data-manage-url="{% url 'equipment:manage_category' %}">
+                    {% for category in categories %}
+                    <div class="grid grid-cols-1 xl:grid-cols-[1fr_auto_auto] gap-3 items-end bg-gray-50 border border-gray-100 rounded-xl p-4">
+                        <form id="categoryUpdateForm{{ category.id }}" method="post" action="{% url 'equipment:manage_category' %}" class="category-action-form contents">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update">
+                            <input type="hidden" name="category_id" value="{{ category.id }}">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                                <input name="name" required value="{{ category.name }}" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                            </div>
+                        </form>
+                        <button type="submit" form="categoryUpdateForm{{ category.id }}" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm">
+                            <i class="fa fa-floppy-o"></i> Update
+                        </button>
+                        <form method="post" action="{% url 'equipment:manage_category' %}" class="category-action-form" data-confirm="Delete this category from future equipment selections?">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="category_id" value="{{ category.id }}">
+                            <button type="submit" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg transition-colors">
+                                <i class="fa fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </div>
+                    {% empty %}
+                    <div class="rounded-xl border border-gray-100 bg-gray-50 p-8 text-center text-gray-600">
+                        <i class="fa fa-tags text-4xl block mb-3 opacity-30"></i>
+                        No active categories found. Create one above to make it available in Create Equipment.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <button type="button" onclick="closeCategoryModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors"><i class="fa fa-times"></i> Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="createEquipmentModal" class="hidden fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeCreateEquipmentModal()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-6xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Create Equipment</h3>
+                <p class="text-sm text-gray-500 mt-1">Register a new lab equipment record in the manifest.</p>
+            </div>
+            <button type="button" onclick="closeCreateEquipmentModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+
+        <form method="post" action="{% url 'equipment:create' %}" class="max-h-[75vh] overflow-y-auto" onsubmit="return validateCreateEquipmentForm(this)">
+            {% csrf_token %}
+            <input type="hidden" name="source" value="manifest_modal">
+            <div class="px-7 py-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Asset Tag <span class="text-red-500">*</span></label>
+                        <input name="asset_tag" required class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Equipment Name <span class="text-red-500">*</span></label>
+                        <input name="name" required class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Category <span class="text-red-500">*</span></label>
+                        <div class="custom-select relative" data-placeholder="Select category">
+                            <input type="hidden" name="category" data-required-label="Category">
+                            <button type="button" class="custom-select-trigger w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors flex items-center justify-between">
+                                <span class="custom-select-label text-gray-900">Select category</span>
+                                <i class="fa fa-chevron-down text-xs text-gray-500"></i>
+                            </button>
+                            <div class="custom-select-menu hidden absolute left-0 right-0 top-[calc(100%+6px)] z-[10000] bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden">
+                                <button type="button" class="custom-select-option w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 text-gray-700" data-value="">Select category</button>
+                            {% for category in category_options %}
+                                <button type="button" class="custom-select-option w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 text-gray-700" data-value="{{ category }}">{{ category }}</button>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Location <span class="text-red-500">*</span></label>
+                        <input name="lab_location" required class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Serial Number <span class="text-red-500">*</span></label>
+                        <input name="serial_number" required class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Condition <span class="text-red-500">*</span></label>
+                        <div class="custom-select relative" data-placeholder="Select condition">
+                            <input type="hidden" name="condition" value="Good" data-required-label="Condition">
+                            <button type="button" class="custom-select-trigger w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors flex items-center justify-between">
+                                <span class="custom-select-label text-gray-900">Good</span>
+                                <i class="fa fa-chevron-down text-xs text-gray-500"></i>
+                            </button>
+                            <div class="custom-select-menu hidden absolute left-0 right-0 top-[calc(100%+6px)] z-[10000] bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden">
+                                <button type="button" class="custom-select-option w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 text-gray-700" data-value="">Select condition</button>
+                            {% for condition in condition_options %}
+                                <button type="button" class="custom-select-option w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 text-gray-700" data-value="{{ condition }}">{{ condition }}</button>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Status <span class="text-red-500">*</span></label>
+                        <div class="custom-select relative" data-placeholder="Select status">
+                            <input type="hidden" name="status" value="available" data-required-label="Status">
+                            <button type="button" class="custom-select-trigger w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors flex items-center justify-between">
+                                <span class="custom-select-label text-gray-900">Available</span>
+                                <i class="fa fa-chevron-down text-xs text-gray-500"></i>
+                            </button>
+                            <div class="custom-select-menu hidden absolute left-0 right-0 top-[calc(100%+6px)] z-[10000] bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden">
+                                <button type="button" class="custom-select-option w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 text-gray-700" data-value="">Select status</button>
+                            {% for value,label in statuses %}
+                                <button type="button" class="custom-select-option w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 text-gray-700" data-value="{{ value }}">{{ label }}</button>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Daily Penalty Rate <span class="text-gray-400">(MYR)</span></label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">MYR</span>
+                            <input name="daily_penalty_rate" type="number" min="0" step="0.01" value="5.00" class="w-full pl-16 pr-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                        <textarea name="notes" rows="4" placeholder="Add handling instructions, calibration details, known issues, or borrowing restrictions." class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <button type="button" onclick="closeCreateEquipmentModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors"><i class="fa fa-times"></i> Cancel</button>
+                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-sm"><i class="fa fa-floppy-o"></i> Save Equipment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const CATEGORY_MANAGE_URL = "{% url 'equipment:manage_category' %}";
+
+    function openCreateEquipmentModal() {
+        const modal = document.getElementById('createEquipmentModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeCreateEquipmentModal() {
+        const modal = document.getElementById('createEquipmentModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function openCategoryModal() {
+        const modal = document.getElementById('categoryModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeCategoryModal() {
+        const modal = document.getElementById('categoryModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeCreateEquipmentModal();
+            closeCategoryModal();
+        }
+    });
+
+    function closeCustomSelects(exceptSelect) {
+        document.querySelectorAll('.custom-select').forEach(function(select) {
+            if (select === exceptSelect) return;
+            select.querySelector('.custom-select-menu')?.classList.add('hidden');
+        });
+    }
+
+    document.querySelectorAll('.custom-select-trigger').forEach(function(trigger) {
+        trigger.addEventListener('click', function(event) {
+            event.stopPropagation();
+            const select = trigger.closest('.custom-select');
+            const menu = select.querySelector('.custom-select-menu');
+            closeCustomSelects(select);
+            menu.classList.toggle('hidden');
+        });
+    });
+
+    document.addEventListener('click', function() {
+        closeCustomSelects();
+    });
+
+    function validateCreateEquipmentForm(form) {
+        const requiredSelect = Array.from(form.querySelectorAll('.custom-select input[data-required-label]')).find(function(input) {
+            return !input.value;
+        });
+        if (requiredSelect) {
+            alert(requiredSelect.dataset.requiredLabel + ' is required.');
+            requiredSelect.closest('.custom-select').querySelector('.custom-select-trigger').focus();
+            return false;
+        }
+        return true;
+    }
+
+    function getCsrfToken() {
+        return document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+    }
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function(char) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;',
+            }[char];
+        });
+    }
+
+    function renderCategoryRows(categories) {
+        const container = document.getElementById('categoryRows');
+        if (!container) return;
+
+        if (!categories.length) {
+            container.innerHTML = `
+                <div class="rounded-xl border border-gray-100 bg-gray-50 p-8 text-center text-gray-600">
+                    <i class="fa fa-tags text-4xl block mb-3 opacity-30"></i>
+                    No active categories found. Create one above to make it available in Create Equipment.
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = categories.map(function(category) {
+            const id = escapeHtml(category.id);
+            const name = escapeHtml(category.name);
+            return `
+                <div class="grid grid-cols-1 xl:grid-cols-[1fr_auto_auto] gap-3 items-end bg-gray-50 border border-gray-100 rounded-xl p-4">
+                    <form id="categoryUpdateForm${id}" method="post" action="${CATEGORY_MANAGE_URL}" class="category-action-form contents">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
+                        <input type="hidden" name="action" value="update">
+                        <input type="hidden" name="category_id" value="${id}">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                            <input name="name" required value="${name}" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                        </div>
+                    </form>
+                    <button type="submit" form="categoryUpdateForm${id}" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm">
+                        <i class="fa fa-floppy-o"></i> Update
+                    </button>
+                    <form method="post" action="${CATEGORY_MANAGE_URL}" class="category-action-form" data-confirm="Delete this category from future equipment selections?">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${getCsrfToken()}">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="category_id" value="${id}">
+                        <button type="submit" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fa fa-trash"></i> Delete
+                        </button>
+                    </form>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderCategoryDropdown(categories) {
+        const categorySelect = document.querySelector('.custom-select input[name="category"]')?.closest('.custom-select');
+        if (!categorySelect) return;
+
+        const input = categorySelect.querySelector('input[name="category"]');
+        const label = categorySelect.querySelector('.custom-select-label');
+        const menu = categorySelect.querySelector('.custom-select-menu');
+        input.value = '';
+        label.textContent = 'Select category';
+        label.classList.add('text-gray-400');
+        label.classList.remove('text-gray-900');
+        menu.innerHTML = '<button type="button" class="custom-select-option w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 text-gray-700" data-value="">Select category</button>' +
+            categories.map(function(category) {
+                const name = escapeHtml(category.name);
+                return `<button type="button" class="custom-select-option w-full px-4 py-2.5 text-left text-sm hover:bg-blue-50 text-gray-700" data-value="${name}">${name}</button>`;
+            }).join('');
+    }
+
+    function bindCategoryForms() {
+        document.querySelectorAll('.category-action-form').forEach(function(form) {
+            if (form.dataset.bound === 'true') return;
+            form.dataset.bound = 'true';
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                if (form.dataset.confirm && !confirm(form.dataset.confirm)) return;
+
+                const submitButton = document.activeElement?.tagName === 'BUTTON' ? document.activeElement : form.querySelector('button[type="submit"]');
+                const originalText = submitButton ? submitButton.innerHTML : '';
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Working';
+                }
+
+                try {
+                    const response = await fetch(CATEGORY_MANAGE_URL, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': getCsrfToken(),
+                        },
+                    });
+                    const responseText = await response.text();
+                    let payload = null;
+                    try {
+                        payload = JSON.parse(responseText);
+                    } catch (parseError) {
+                        alert('Category action failed: server returned a non-JSON response (HTTP ' + response.status + '). Please refresh and try again.');
+                        return;
+                    }
+                    if (!response.ok || !payload.ok) {
+                        alert(payload.message || 'Category action failed.');
+                        return;
+                    }
+
+                    renderCategoryRows(payload.categories);
+                    renderCategoryDropdown(payload.categories);
+                    bindCategoryForms();
+                    bindCustomSelectOptions();
+
+                    if (form.querySelector('input[name="action"]')?.value === 'create') {
+                        form.reset();
+                    }
+                } catch (error) {
+                    alert('Category action failed. Please try again.');
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalText;
+                    }
+                }
+            });
+        });
+    }
+
+    function bindCustomSelectOptions() {
+        document.querySelectorAll('.custom-select-option').forEach(function(option) {
+            if (option.dataset.bound === 'true') return;
+            option.dataset.bound = 'true';
+            option.addEventListener('click', function(event) {
+                event.stopPropagation();
+                const select = option.closest('.custom-select');
+                const value = option.dataset.value;
+                const label = option.textContent.trim();
+                const input = select.querySelector('input[type="hidden"]');
+                const labelNode = select.querySelector('.custom-select-label');
+
+                input.value = value;
+                labelNode.textContent = label;
+                labelNode.classList.toggle('text-gray-400', value === '');
+                labelNode.classList.toggle('text-gray-900', value !== '');
+                select.querySelector('.custom-select-menu').classList.add('hidden');
+            });
+        });
+    }
+
+    bindCategoryForms();
+    bindCustomSelectOptions();
+</script>
+{% endblock %}
