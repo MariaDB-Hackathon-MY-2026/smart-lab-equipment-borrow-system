@@ -1,0 +1,1029 @@
+{% extends 'layouts/base.html' %}
+{% block content %}
+<style>
+    .request-empty-state {
+        padding: 0 !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+    }
+
+    .request-empty-state-body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 0.75rem;
+        min-height: 220px;
+        width: 100%;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .borrow-step { display: none; }
+    .borrow-step.is-active { display: block; }
+    .borrow-step-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 9999px;
+        background: #d1d5db;
+    }
+    .borrow-step-dot.is-active { background: #155DA3; }
+    .borrow-option-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        background: #fff;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .borrow-option-card:has(input:checked) {
+        border-color: #155DA3;
+        box-shadow: 0 0 0 3px rgba(21, 93, 163, 0.1);
+    }
+    .borrow-date-field { position: relative; }
+    .borrow-date-trigger {
+        width: 100%;
+        min-height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        background: #fff;
+        color: #111827;
+        font-size: 0.875rem;
+        text-align: left;
+    }
+    .borrow-date-trigger:focus {
+        outline: none;
+        border-color: #22c55e;
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+    }
+    .borrow-calendar {
+        position: absolute;
+        left: 0;
+        top: calc(100% + 0.5rem);
+        z-index: 10000;
+        width: min(320px, calc(100vw - 3rem));
+        border: 1px solid #e5e7eb;
+        border-radius: 0.9rem;
+        background: #fff;
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+        padding: 1rem;
+        overflow: hidden;
+    }
+    .borrow-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.25rem;
+    }
+    .borrow-calendar-weekday {
+        color: #6b7280;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-align: center;
+        text-transform: uppercase;
+    }
+    .borrow-calendar-day {
+        min-height: 34px;
+        border-radius: 0.5rem;
+        color: #111827;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .borrow-calendar-day:not(:disabled):hover {
+        background: #eaf4ff;
+        color: #155DA3;
+    }
+    .borrow-calendar-day.is-selected {
+        background: #155DA3;
+        color: #fff;
+    }
+    .borrow-calendar-day:disabled {
+        color: #cbd5e1;
+        cursor: not-allowed;
+        background: #f8fafc;
+        text-decoration: line-through;
+    }
+    .borrow-calendar-day.is-weekend:disabled {
+        color: #b6bdc8;
+        background: #f1f5f9;
+    }
+</style>
+
+<div class="border-b border-gray-200 pb-4 mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <h1 class="text-2xl font-semibold tracking-normal text-gray-800 uppercase">Lending Manager</h1>
+    <div class="flex flex-wrap gap-3 sm:justify-end">
+        <button type="button" onclick="openPenaltiesModal()" class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-100">
+            <i class="fa fa-exclamation-circle"></i>
+            View Penalties
+        </button>
+        <button type="button" {% if can_borrow %}onclick="openBorrowModal()"{% else %}onclick="openPenaltiesModal()" disabled title="Settle all penalties before borrowing new equipment."{% endif %} class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors {% if can_borrow %}bg-[#155DA3] text-white hover:bg-[#0B3D73]{% else %}cursor-not-allowed bg-gray-300 text-gray-500{% endif %}">
+            <i class="fa fa-plus-circle"></i>
+            Borrow Item
+        </button>
+    </div>
+</div>
+
+<div id="penaltiesModal" class="hidden fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closePenaltiesModal()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Penalties</h3>
+            <button type="button" onclick="closePenaltiesModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+        <div class="px-7 py-6 max-h-[70vh] overflow-y-auto">
+            <div class="overflow-x-auto">
+                <table class="dataTable w-full">
+                    <thead>
+                        <tr>
+                            <th>Borrow Date</th>
+                            <th>Penalty Status</th>
+                            <th>Penalty Rate</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for penalty in penalties %}
+                        <tr>
+                            <td>
+                                <span class="block font-semibold text-gray-900">{{ penalty.lending_request.requested_from }} - {{ penalty.lending_request.requested_until }}</span>
+                                <span class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mt-1">{{ penalty.lending_request.equipment.name }}</span>
+                            </td>
+                            <td><span class="status-badge status-{{ penalty.status }}">{{ penalty.get_status_display }}</span></td>
+                            <td class="font-semibold text-gray-900">RM {{ penalty.amount }}</td>
+                            <td>
+                                {% if penalty.status == 'unpaid' %}
+                                <form method="post" action="{% url 'lending:pay_penalty' penalty.id %}" class="penalty-payment-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-[#155DA3] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0B3D73]">
+                                        <i class="fa fa-credit-card"></i>
+                                        Pay
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-sm font-semibold text-gray-400">No action</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="empty-state text-center py-12 text-gray-700">
+                                <i class="fa fa-check-circle text-5xl block mb-4 opacity-20"></i>
+                                No penalties found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <button type="button" onclick="closePenaltiesModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-sm">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-6">
+    <div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-visible">
+        <div class="px-6 py-4 border-b border-gray-100">
+            <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Request Status</h4>
+        </div>
+        <div class="p-6">
+            <div class="overflow-x-auto">
+                <table class="dataTable w-full">
+                    <colgroup>
+                        <col style="width:22%;">
+                        <col style="width:24%;">
+                        <col style="width:14%;">
+                        <col style="width:24%;">
+                        <col style="width:16%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Equipment</th>
+                            <th>Borrowing Period</th>
+                            <th>Status</th>
+                            <th>Purpose</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in requests %}
+                        <tr>
+                            <td>
+                                <span class="block font-semibold text-gray-900">{{ item.equipment.name }}</span>
+                                <span class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mt-1">{{ item.equipment.asset_tag }}</span>
+                            </td>
+                            <td>{{ item.requested_from }} - {{ item.requested_until }}</td>
+                            <td><span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span></td>
+                            <td>{{ item.purpose|truncatechars:80 }}</td>
+                            <td>
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#155DA3] hover:bg-[#0B3D73] rounded-lg transition-colors shadow-sm"
+                                    onclick="openRequestDetailsModal(this)"
+                                    data-request-id="{{ item.id }}"
+                                    data-equipment-name="{{ item.equipment.name }}"
+                                    data-asset-tag="{{ item.equipment.asset_tag }}"
+                                    data-category="{{ item.equipment.category.name }}"
+                                    data-location="{{ item.equipment.lab_location }}"
+                                    data-requested-from="{{ item.requested_from }}"
+                                    data-requested-until="{{ item.requested_until }}"
+                                    data-purpose="{{ item.purpose }}"
+                                    data-status="{{ item.status }}"
+                                    data-status-label="{{ item.get_status_display }}"
+                                    data-admin-note="{{ item.equipment.notes|default:'-' }}"
+                                    data-created-at="{{ item.created_at|date:'M d, Y, h:i A' }}"
+                                    data-code-url="{% url 'lending:borrow_code' item.id %}"
+                                    data-return-url="{% url 'lending:request_return' item.id %}"
+                                >
+                                    <i class="fa fa-cog"></i>
+                                    Manage
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="empty-state request-empty-state text-gray-700">
+                                <div class="request-empty-state-body">
+                                    <i class="fa fa-search text-5xl block mb-4 opacity-20"></i>
+                                    <span>No requests submitted</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="requestDetailsModal" class="hidden fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeRequestDetailsModal()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Manage Lending</h3>
+            <button type="button" onclick="closeRequestDetailsModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+        <div class="px-7 py-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Request ID</p>
+                    <p id="detailRequestId" class="text-sm text-gray-900 mt-2 break-words"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Submitted At</p>
+                    <p id="detailCreatedAt" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Equipment</p>
+                    <p id="detailEquipmentName" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Asset ID</p>
+                    <p id="detailAssetTag" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Category</p>
+                    <p id="detailCategory" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Location</p>
+                    <p id="detailLocation" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Borrow From</p>
+                    <p id="detailRequestedFrom" class="text-sm text-gray-900 mt-2"></p>
+                </div>
+                <div class="relative">
+                    <p class="text-sm font-semibold text-gray-500">Borrow Until</p>
+                    <p id="detailRequestedUntil" class="text-sm text-gray-900 mt-2"></p>
+                    <div id="detailReturnAction" class="hidden mt-4 md:absolute md:left-0 md:top-full md:mt-4">
+                        <button type="button" id="detailReturnButton" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#155DA3] hover:bg-[#0B3D73] rounded-xl transition-colors shadow-sm">
+                            <i class="fa fa-undo"></i>
+                            Return
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-gray-500">Status</p>
+                    <p class="mt-2"><span id="detailStatus" class="status-badge"></span></p>
+                </div>
+                <div id="detailBorrowCodePanel" class="hidden md:col-span-2 rounded-xl border border-blue-100 bg-blue-50 p-5">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-[#155DA3]">Borrow Key</p>
+                            <p class="text-xs text-blue-700 mt-1">Give this 6-digit key to the admin when collecting the item. It refreshes every 5 minutes.</p>
+                        </div>
+                        <div class="text-left sm:text-right">
+                            <p id="detailBorrowCode" class="font-mono text-3xl font-bold tracking-[0.35em] text-gray-900">------</p>
+                            <p id="detailBorrowCodeTimer" class="text-xs font-semibold text-blue-700 mt-1">Refreshing...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <p class="text-sm font-semibold text-gray-500">Purpose</p>
+                    <p id="detailPurpose" class="text-sm text-gray-900 mt-2 leading-6 whitespace-pre-wrap"></p>
+                </div>
+                <div class="md:col-span-2">
+                    <p class="text-sm font-semibold text-gray-500">Note(s)</p>
+                    <p id="detailAdminNote" class="text-sm text-gray-900 mt-2 leading-6 whitespace-pre-wrap"></p>
+                </div>
+            </div>
+        </div>
+        <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <button type="button" onclick="closeRequestDetailsModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-sm">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<form id="detailReturnForm" method="post" class="hidden">
+    {% csrf_token %}
+</form>
+
+{% if stripe_publishable_key %}
+<script src="https://js.stripe.com/v3/"></script>
+{% endif %}
+<div id="borrowModal" class="hidden fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeBorrowModal()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between gap-4">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Borrow Item</h3>
+                <p class="text-sm text-gray-500 mt-1">Select categories, choose the exact items, then submit your borrowing request.</p>
+            </div>
+            <button type="button" onclick="closeBorrowModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+
+        <form id="borrowItemForm" method="post" action="{% url 'lending:create_bulk_request' %}">
+            {% csrf_token %}
+            <div class="px-7 py-5 border-b border-gray-100 flex items-center gap-3">
+                <span class="borrow-step-dot is-active" data-step-dot="1"></span>
+                <span class="borrow-step-dot" data-step-dot="2"></span>
+                <span class="borrow-step-dot" data-step-dot="3"></span>
+                <span id="borrowStepLabel" class="ml-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Categories</span>
+            </div>
+
+            <div class="px-7 py-6 max-h-[65vh] overflow-y-auto">
+                <section class="borrow-step is-active" data-borrow-step="1">
+                    <div class="mb-5">
+                        <h4 class="text-sm font-semibold text-gray-800 uppercase tracking-wide">Choose Categories</h4>
+                        <p class="text-sm text-gray-500 mt-1">Select one or more equipment categories and enter the quantity needed for each category.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for group in category_groups %}
+                        <label class="borrow-option-card p-4 flex items-start gap-4">
+                            <input type="checkbox" class="borrow-category-checkbox mt-1 h-4 w-4 rounded border-gray-300 text-[#155DA3] focus:ring-[#155DA3]" value="{{ group.id }}" data-category-name="{{ group.name }}" data-max="{{ group.equipments|length }}">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900 flex items-center gap-2"><i class="{{ group.icon_class }} text-gray-400"></i> {{ group.name }}</p>
+                                        <p class="text-xs text-gray-500 mt-1">{{ group.equipments|length }} available item(s)</p>
+                                    </div>
+                                    <input type="number" min="1" max="{{ group.equipments|length }}" value="1" disabled class="category-quantity w-14 px-2 py-2 border border-gray-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 disabled:bg-gray-100 disabled:text-gray-400" data-category-id="{{ group.id }}">
+                                </div>
+                            </div>
+                        </label>
+                        {% empty %}
+                        <div class="md:col-span-2 text-center py-12 text-gray-500">
+                            <i class="fa fa-search text-5xl block mb-4 opacity-20"></i>
+                            No available equipment right now
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="borrow-step" data-borrow-step="2">
+                    <div class="mb-5">
+                        <h4 class="text-sm font-semibold text-gray-800 uppercase tracking-wide">Choose Items</h4>
+                        <p class="text-sm text-gray-500 mt-1">Select the exact equipment items needed from each chosen category.</p>
+                    </div>
+                    <div class="space-y-5">
+                        {% for group in category_groups %}
+                        <div class="borrow-item-group hidden" data-category-id="{{ group.id }}" data-category-name="{{ group.name }}">
+                            <div class="flex items-center justify-between gap-4 mb-3">
+                                <h5 class="text-sm font-semibold text-gray-800 flex items-center gap-2"><i class="{{ group.icon_class }} text-gray-400"></i> {{ group.name }}</h5>
+                                <span class="borrow-item-count text-xs font-semibold text-gray-500" data-category-id="{{ group.id }}"></span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {% for equipment in group.equipments %}
+                                <label class="borrow-option-card p-4 flex items-start gap-3">
+                                    <input type="checkbox" name="equipment_ids" value="{{ equipment.id }}" class="borrow-item-checkbox mt-1 h-4 w-4 rounded border-gray-300 text-[#155DA3] focus:ring-[#155DA3]" data-category-id="{{ group.id }}">
+                                    <span class="min-w-0">
+                                        <span class="block text-sm font-semibold text-gray-900">{{ equipment.name }}</span>
+                                        <span class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mt-1">{{ equipment.asset_tag }}</span>
+                                        <span class="block text-xs text-gray-500 mt-2">{{ equipment.lab_location }} | {{ equipment.condition }}</span>
+                                    </span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="borrow-step" data-borrow-step="3">
+                    <div class="mb-5">
+                        <h4 class="text-sm font-semibold text-gray-800 uppercase tracking-wide">Request Details</h4>
+                        <p class="text-sm text-gray-500 mt-1">Add the borrowing period and purpose before submitting your request.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="borrow-date-field">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Borrow From <span class="text-red-500">*</span></label>
+                            <input id="borrowFromDate" name="requested_from" type="hidden" required>
+                            <button id="borrowFromTrigger" type="button" class="borrow-date-trigger" onclick="toggleBorrowCalendar('from')">
+                                <span data-date-label="from">Select date</span>
+                                <i class="fa fa-calendar"></i>
+                            </button>
+                            <div id="borrowFromCalendar" class="borrow-calendar hidden" data-picker="from"></div>
+                        </div>
+                        <div class="borrow-date-field">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Borrow Until <span class="text-red-500">*</span></label>
+                            <input id="borrowUntilDate" name="requested_until" type="hidden" required>
+                            <button id="borrowUntilTrigger" type="button" class="borrow-date-trigger" onclick="toggleBorrowCalendar('until')">
+                                <span data-date-label="until">Select date</span>
+                                <i class="fa fa-calendar"></i>
+                            </button>
+                            <div id="borrowUntilCalendar" class="borrow-calendar hidden" data-picker="until"></div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Purpose <span class="text-red-500">*</span></label>
+                            <textarea name="purpose" rows="6" required placeholder="Explain the lab activity, module, project, or assessment that requires this equipment." class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors"></textarea>
+                        </div>
+                        <label class="md:col-span-2 flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                            <input type="checkbox" name="terms_accepted" value="1" required class="mt-1 h-4 w-4 rounded border-gray-300 text-[#155DA3] focus:ring-[#155DA3]">
+                            <span>I agree to return borrowed equipment on time, keep it in good condition, and accept applicable penalties for overdue or damaged items.</span>
+                        </label>
+                    </div>
+                </section>
+            </div>
+
+            <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <button type="button" id="borrowBackButton" onclick="previousBorrowStep()" class="hidden inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors"><i class="fa fa-arrow-left"></i> Back</button>
+                <button type="button" onclick="closeBorrowModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" id="borrowNextButton" onclick="nextBorrowStep()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#155DA3] hover:bg-[#0B3D73] rounded-xl transition-colors shadow-sm">Next <i class="fa fa-arrow-right"></i></button>
+                <button type="submit" id="borrowSubmitButton" class="hidden inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#155DA3] hover:bg-[#0B3D73] rounded-xl transition-colors shadow-sm"><i class="fa fa-paper-plane"></i> Submit Request</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const STRIPE_PUBLISHABLE_KEY = "{{ stripe_publishable_key|escapejs }}";
+    const stripeClient = STRIPE_PUBLISHABLE_KEY && window.Stripe ? Stripe(STRIPE_PUBLISHABLE_KEY) : null;
+    let borrowStep = 1;
+    let borrowCodeCountdown = 0;
+    let borrowCodeRefreshTimer = null;
+    let borrowCodeCountdownTimer = null;
+    const borrowStepLabels = {
+        1: 'Categories',
+        2: 'Items',
+        3: 'Request Details',
+    };
+
+    function selectedCategoryConfig() {
+        return Array.from(document.querySelectorAll('.borrow-category-checkbox:checked')).map(function(checkbox) {
+            const quantityInput = document.querySelector('.category-quantity[data-category-id="' + checkbox.value + '"]');
+            return {
+                id: checkbox.value,
+                name: checkbox.dataset.categoryName,
+                quantity: Number(quantityInput ? quantityInput.value : 0),
+                max: Number(checkbox.dataset.max || 0),
+            };
+        });
+    }
+
+    function openBorrowModal() {
+        const modal = document.getElementById('borrowModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        initializeBorrowDateRules();
+        setBorrowStep(1);
+    }
+
+    function closeBorrowModal() {
+        const modal = document.getElementById('borrowModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function openPenaltiesModal() {
+        const modal = document.getElementById('penaltiesModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePenaltiesModal() {
+        const modal = document.getElementById('penaltiesModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    document.querySelectorAll('.penalty-payment-form').forEach(function(form) {
+        form.addEventListener('submit', async function(event) {
+            if (!stripeClient) return;
+            event.preventDefault();
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalText = submitButton ? submitButton.innerHTML : '';
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Redirecting';
+            }
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.ok) {
+                    alert(payload.message || 'Unable to start Stripe payment.');
+                    return;
+                }
+                const result = await stripeClient.redirectToCheckout({ sessionId: payload.session_id });
+                if (result.error) alert(result.error.message);
+            } catch (error) {
+                alert('Unable to start Stripe payment. Please try again.');
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                }
+            }
+        });
+    });
+
+    function setDetailText(id, value) {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value || '-';
+    }
+
+    function stopBorrowCodeUpdates() {
+        if (borrowCodeRefreshTimer) clearTimeout(borrowCodeRefreshTimer);
+        if (borrowCodeCountdownTimer) clearInterval(borrowCodeCountdownTimer);
+        borrowCodeRefreshTimer = null;
+        borrowCodeCountdownTimer = null;
+    }
+
+    function setBorrowCodePanelVisible(isVisible) {
+        const panel = document.getElementById('detailBorrowCodePanel');
+        if (panel) panel.classList.toggle('hidden', !isVisible);
+    }
+
+    function renderBorrowCodeCountdown() {
+        const timer = document.getElementById('detailBorrowCodeTimer');
+        if (!timer) return;
+        const minutes = Math.floor(Math.max(borrowCodeCountdown, 0) / 60);
+        const seconds = Math.max(borrowCodeCountdown, 0) % 60;
+        timer.textContent = 'Refreshes in ' + minutes + ':' + String(seconds).padStart(2, '0');
+    }
+
+    function scheduleBorrowCodeRefresh(codeUrl) {
+        stopBorrowCodeUpdates();
+        renderBorrowCodeCountdown();
+        borrowCodeCountdownTimer = setInterval(function() {
+            borrowCodeCountdown -= 1;
+            renderBorrowCodeCountdown();
+        }, 1000);
+        borrowCodeRefreshTimer = setTimeout(function() {
+            fetchBorrowCode(codeUrl);
+        }, Math.min(Math.max(borrowCodeCountdown, 1), 15) * 1000);
+    }
+
+    function fetchBorrowCode(codeUrl) {
+        if (!codeUrl) return;
+        fetch(codeUrl, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(function(response) { return response.json(); })
+            .then(function(payload) {
+                const codeElement = document.getElementById('detailBorrowCode');
+                if (!payload.ok) {
+                    if (payload.status) {
+                        const statusBadge = document.getElementById('detailStatus');
+                        if (statusBadge) {
+                            statusBadge.className = 'status-badge status-' + payload.status;
+                            statusBadge.textContent = payload.status;
+                        }
+                    }
+                    if (codeElement) codeElement.textContent = '------';
+                    stopBorrowCodeUpdates();
+                    setBorrowCodePanelVisible(false);
+                    return;
+                }
+                setBorrowCodePanelVisible(true);
+                if (codeElement) codeElement.textContent = payload.code;
+                borrowCodeCountdown = Number(payload.remaining_seconds || 300);
+                scheduleBorrowCodeRefresh(codeUrl);
+            })
+            .catch(function() {
+                const timer = document.getElementById('detailBorrowCodeTimer');
+                if (timer) timer.textContent = 'Unable to refresh key';
+            });
+    }
+
+    function startBorrowCodeUpdates(codeUrl, status) {
+        stopBorrowCodeUpdates();
+        const codeElement = document.getElementById('detailBorrowCode');
+        if (codeElement) codeElement.textContent = '------';
+        setBorrowCodePanelVisible(status === 'approved');
+        if (status === 'approved') {
+            fetchBorrowCode(codeUrl);
+        }
+    }
+
+    function configureReturnAction(status, returnUrl) {
+        const container = document.getElementById('detailReturnAction');
+        const button = document.getElementById('detailReturnButton');
+        const form = document.getElementById('detailReturnForm');
+        const canRequestReturn = status === 'borrowed' || status === 'overdue';
+        if (!container || !button || !form) return;
+        container.classList.toggle('hidden', !canRequestReturn);
+        button.onclick = function() {
+            if (!canRequestReturn) return;
+            if (!confirm('Submit this equipment for return approval?')) return;
+            form.action = returnUrl;
+            form.submit();
+        };
+    }
+
+    function openRequestDetailsModal(button) {
+        const modal = document.getElementById('requestDetailsModal');
+        if (!modal) return;
+        const data = button.dataset;
+
+        setDetailText('detailRequestId', data.requestId);
+        setDetailText('detailCreatedAt', data.createdAt);
+        setDetailText('detailEquipmentName', data.equipmentName);
+        setDetailText('detailAssetTag', data.assetTag);
+        setDetailText('detailCategory', data.category);
+        setDetailText('detailLocation', data.location);
+        setDetailText('detailRequestedFrom', data.requestedFrom);
+        setDetailText('detailRequestedUntil', data.requestedUntil);
+        setDetailText('detailCondition', data.condition);
+        setDetailText('detailPurpose', data.purpose);
+        setDetailText('detailAdminNote', data.adminNote);
+
+        const statusBadge = document.getElementById('detailStatus');
+        if (statusBadge) {
+            statusBadge.className = 'status-badge status-' + data.status;
+            statusBadge.textContent = data.statusLabel || data.status || '-';
+        }
+        startBorrowCodeUpdates(data.codeUrl, data.status);
+        configureReturnAction(data.status, data.returnUrl);
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeRequestDetailsModal() {
+        const modal = document.getElementById('requestDetailsModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+        stopBorrowCodeUpdates();
+    }
+
+    function setBorrowStep(step) {
+        borrowStep = step;
+        if (borrowStep === 3) initializeBorrowDateRules();
+        document.querySelectorAll('.borrow-step').forEach(function(section) {
+            section.classList.toggle('is-active', Number(section.dataset.borrowStep) === borrowStep);
+        });
+        document.querySelectorAll('[data-step-dot]').forEach(function(dot) {
+            dot.classList.toggle('is-active', Number(dot.dataset.stepDot) === borrowStep);
+        });
+        document.getElementById('borrowStepLabel').textContent = borrowStepLabels[borrowStep];
+        document.getElementById('borrowBackButton').classList.toggle('hidden', borrowStep === 1);
+        document.getElementById('borrowNextButton').classList.toggle('hidden', borrowStep === 3);
+        document.getElementById('borrowSubmitButton').classList.toggle('hidden', borrowStep !== 3);
+    }
+
+    function validateCategoryStep() {
+        const selectedCategories = selectedCategoryConfig();
+        if (!selectedCategories.length) {
+            alert('Please select at least one category.');
+            return false;
+        }
+        for (const category of selectedCategories) {
+            if (!category.quantity || category.quantity < 1 || category.quantity > category.max) {
+                alert('Please enter a valid quantity for ' + category.name + '.');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function syncItemStep() {
+        const selectedCategories = selectedCategoryConfig();
+        const selectedCategoryIds = selectedCategories.map(function(category) { return category.id; });
+        document.querySelectorAll('.borrow-item-group').forEach(function(group) {
+            const isVisible = selectedCategoryIds.includes(group.dataset.categoryId);
+            group.classList.toggle('hidden', !isVisible);
+            if (!isVisible) {
+                group.querySelectorAll('.borrow-item-checkbox').forEach(function(checkbox) {
+                    checkbox.checked = false;
+                });
+            }
+        });
+        updateItemCounts();
+    }
+
+    function updateItemCounts() {
+        selectedCategoryConfig().forEach(function(category) {
+            const selectedCount = document.querySelectorAll('.borrow-item-checkbox[data-category-id="' + category.id + '"]:checked').length;
+            const countLabel = document.querySelector('.borrow-item-count[data-category-id="' + category.id + '"]');
+            if (countLabel) countLabel.textContent = selectedCount + ' of ' + category.quantity + ' selected';
+        });
+    }
+
+    function validateItemStep() {
+        for (const category of selectedCategoryConfig()) {
+            const selectedCount = document.querySelectorAll('.borrow-item-checkbox[data-category-id="' + category.id + '"]:checked').length;
+            if (selectedCount !== category.quantity) {
+                alert('Please select exactly ' + category.quantity + ' item(s) for ' + category.name + '.');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function formatDateForInput(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    function parseInputDate(value) {
+        if (!value) return null;
+        const parts = value.split('-').map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    function isWeekendDateValue(value) {
+        const date = parseInputDate(value);
+        if (!date) return false;
+        const day = date.getDay();
+        return day === 0 || day === 6;
+    }
+
+    function minimumBorrowFromDate() {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + 1);
+        return formatDateForInput(date);
+    }
+
+    const borrowCalendarState = {
+        from: { visibleDate: null },
+        until: { visibleDate: null },
+    };
+
+    function formatDateForDisplay(value) {
+        const date = parseInputDate(value);
+        if (!date) return 'Select date';
+        return date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+        }).replace(/ /g, '-');
+    }
+
+    function calendarMinDateValue(type) {
+        if (type === 'until') {
+            return document.getElementById('borrowFromDate').value || minimumBorrowFromDate();
+        }
+        return minimumBorrowFromDate();
+    }
+
+    function syncBorrowDateLabels() {
+        const fromValue = document.getElementById('borrowFromDate').value;
+        const untilValue = document.getElementById('borrowUntilDate').value;
+        document.querySelector('[data-date-label="from"]').textContent = formatDateForDisplay(fromValue);
+        document.querySelector('[data-date-label="until"]').textContent = formatDateForDisplay(untilValue);
+    }
+
+    function monthLabel(date) {
+        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+
+    function hideBorrowCalendars(exceptType) {
+        ['from', 'until'].forEach(function(type) {
+            if (type === exceptType) return;
+            const calendar = document.getElementById(type === 'from' ? 'borrowFromCalendar' : 'borrowUntilCalendar');
+            calendar.classList.add('hidden');
+        });
+    }
+
+    function renderBorrowCalendar(type) {
+        const calendar = document.getElementById(type === 'from' ? 'borrowFromCalendar' : 'borrowUntilCalendar');
+        const input = document.getElementById(type === 'from' ? 'borrowFromDate' : 'borrowUntilDate');
+        const minValue = calendarMinDateValue(type);
+        const minDate = parseInputDate(minValue);
+        const selectedDate = parseInputDate(input.value);
+        const state = borrowCalendarState[type];
+        const visibleDate = state.visibleDate || selectedDate || minDate || new Date();
+        state.visibleDate = new Date(visibleDate.getFullYear(), visibleDate.getMonth(), 1);
+
+        const firstDay = new Date(state.visibleDate.getFullYear(), state.visibleDate.getMonth(), 1);
+        const startOffset = firstDay.getDay();
+        const daysInMonth = new Date(state.visibleDate.getFullYear(), state.visibleDate.getMonth() + 1, 0).getDate();
+        const weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+        let dayButtons = '';
+        for (let blank = 0; blank < startOffset; blank += 1) {
+            dayButtons += '<span></span>';
+        }
+        for (let day = 1; day <= daysInMonth; day += 1) {
+            const date = new Date(state.visibleDate.getFullYear(), state.visibleDate.getMonth(), day);
+            const value = formatDateForInput(date);
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+            const isBeforeMin = value < minValue;
+            const isSelected = input.value === value;
+            const disabled = isWeekend || isBeforeMin;
+            dayButtons += '<button type="button" class="borrow-calendar-day'
+                + (isSelected ? ' is-selected' : '')
+                + (isWeekend ? ' is-weekend' : '')
+                + '" data-picker-type="' + type + '" data-date-value="' + value + '"'
+                + (disabled ? ' disabled' : '')
+                + '>' + day + '</button>';
+        }
+
+        calendar.innerHTML = ''
+            + '<div class="flex items-center justify-between gap-3 mb-3">'
+            + '<button type="button" class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500" data-picker-type="' + type + '" data-calendar-shift="-1"><i class="fa fa-chevron-left"></i></button>'
+            + '<div class="text-sm font-semibold text-gray-800">' + monthLabel(state.visibleDate) + '</div>'
+            + '<button type="button" class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500" data-picker-type="' + type + '" data-calendar-shift="1"><i class="fa fa-chevron-right"></i></button>'
+            + '</div>'
+            + '<div class="borrow-calendar-grid mb-2">'
+            + weekdays.map(function(dayName) { return '<div class="borrow-calendar-weekday">' + dayName + '</div>'; }).join('')
+            + dayButtons
+            + '</div>'
+            + '<p class="mt-3 text-xs text-gray-500">Saturdays and Sundays are unavailable.</p>';
+
+        calendar.querySelectorAll('[data-calendar-shift]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                shiftBorrowCalendar(button.dataset.pickerType, Number(button.dataset.calendarShift));
+            });
+        });
+        calendar.querySelectorAll('[data-date-value]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                selectBorrowDate(button.dataset.pickerType, button.dataset.dateValue);
+            });
+        });
+    }
+
+    function toggleBorrowCalendar(type) {
+        hideBorrowCalendars(type);
+        const calendar = document.getElementById(type === 'from' ? 'borrowFromCalendar' : 'borrowUntilCalendar');
+        if (calendar.classList.contains('hidden')) {
+            renderBorrowCalendar(type);
+            calendar.classList.remove('hidden');
+        } else {
+            calendar.classList.add('hidden');
+        }
+    }
+
+    function shiftBorrowCalendar(type, direction) {
+        const state = borrowCalendarState[type];
+        const current = state.visibleDate || parseInputDate(calendarMinDateValue(type)) || new Date();
+        state.visibleDate = new Date(current.getFullYear(), current.getMonth() + direction, 1);
+        renderBorrowCalendar(type);
+    }
+
+    function selectBorrowDate(type, value) {
+        const input = document.getElementById(type === 'from' ? 'borrowFromDate' : 'borrowUntilDate');
+        input.value = value;
+
+        if (type === 'from') {
+            const endInput = document.getElementById('borrowUntilDate');
+            if (endInput.value && endInput.value < value) {
+                endInput.value = '';
+                borrowCalendarState.until.visibleDate = parseInputDate(value);
+            }
+        }
+
+        syncBorrowDateLabels();
+        hideBorrowCalendars();
+        renderBorrowCalendar(type);
+    }
+
+    function initializeBorrowDateRules() {
+        const startInput = document.getElementById('borrowFromDate');
+        const endInput = document.getElementById('borrowUntilDate');
+        if (!startInput || !endInput) return;
+
+        const minStartDate = minimumBorrowFromDate();
+        if (startInput.value && startInput.value < minStartDate) startInput.value = '';
+        if (isWeekendDateValue(startInput.value)) {
+            startInput.value = '';
+            endInput.value = '';
+        }
+
+        const minEndDate = startInput.value || minStartDate;
+        if (endInput.value && endInput.value < minEndDate) endInput.value = '';
+        if (isWeekendDateValue(endInput.value)) endInput.value = '';
+        syncBorrowDateLabels();
+    }
+
+    function validateDetailsStep() {
+        const form = document.getElementById('borrowItemForm');
+        const startDate = form.querySelector('input[name="requested_from"]').value;
+        const endDate = form.querySelector('input[name="requested_until"]').value;
+        const purpose = form.querySelector('textarea[name="purpose"]').value.trim();
+        const termsAccepted = form.querySelector('input[name="terms_accepted"]').checked;
+        const minStartDate = minimumBorrowFromDate();
+
+        if (!startDate || !endDate) {
+            alert('Borrow From and Borrow Until dates are required.');
+            return false;
+        }
+        if (startDate < minStartDate) {
+            alert('Borrow From must be at least 1 day from today.');
+            return false;
+        }
+        if (isWeekendDateValue(startDate) || isWeekendDateValue(endDate)) {
+            alert('Borrow From and Borrow Until must be Monday to Friday.');
+            return false;
+        }
+        if (endDate < startDate) {
+            alert('Borrow Until must be the same date or later than Borrow From.');
+            return false;
+        }
+        if (!purpose) {
+            alert('Purpose is required.');
+            return false;
+        }
+        if (!termsAccepted) {
+            alert('You must agree to the terms and conditions before submitting.');
+            return false;
+        }
+        return true;
+    }
+
+    function nextBorrowStep() {
+        if (borrowStep === 1) {
+            if (!validateCategoryStep()) return;
+            syncItemStep();
+            setBorrowStep(2);
+            return;
+        }
+        if (borrowStep === 2) {
+            if (!validateItemStep()) return;
+            setBorrowStep(3);
+        }
+    }
+
+    function previousBorrowStep() {
+        if (borrowStep > 1) setBorrowStep(borrowStep - 1);
+    }
+
+    document.querySelectorAll('.borrow-category-checkbox').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            const quantityInput = document.querySelector('.category-quantity[data-category-id="' + checkbox.value + '"]');
+            if (!quantityInput) return;
+            quantityInput.disabled = !checkbox.checked;
+            if (checkbox.checked && !quantityInput.value) quantityInput.value = '1';
+        });
+    });
+
+    document.querySelectorAll('.borrow-item-checkbox').forEach(function(checkbox) {
+        checkbox.addEventListener('change', updateItemCounts);
+    });
+
+    document.getElementById('borrowItemForm').addEventListener('submit', function(event) {
+        if (!validateCategoryStep() || !validateItemStep() || !validateDetailsStep()) {
+            event.preventDefault();
+        }
+    });
+
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.borrow-date-field')) {
+            hideBorrowCalendars();
+        }
+    });
+
+    initializeBorrowDateRules();
+</script>
+{% endblock %}

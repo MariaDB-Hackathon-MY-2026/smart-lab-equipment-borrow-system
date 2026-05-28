@@ -1,0 +1,44 @@
+{% extends 'layouts/base.html' %}
+{% block content %}
+<header class="mb-8">
+    <p class="text-sm text-zinc-500">User Portal</p>
+    <h1 class="text-3xl font-semibold">My Lending</h1>
+</header>
+<section class="mb-8 border border-line bg-surface">
+    <div class="border-b border-line px-5 py-4"><h2 class="font-semibold">Request Status</h2></div>
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[800px] text-left text-sm">
+            <thead class="border-b border-line bg-quiet text-xs uppercase text-zinc-500">
+                <tr><th class="px-4 py-3">Equipment</th><th class="px-4 py-3">Dates</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Admin Note</th></tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+                {% for item in requests %}
+                <tr>
+                    <td class="px-4 py-3">{{ item.equipment.name }}</td>
+                    <td class="px-4 py-3">{{ item.requested_from }} to {{ item.requested_until }}</td>
+                    <td class="px-4 py-3 capitalize">{{ item.status }}</td>
+                    <td class="px-4 py-3 text-zinc-500">{{ item.admin_note|default:'-' }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="px-4 py-6 text-center text-zinc-500">No requests submitted.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+<section class="border border-line bg-surface">
+    <div class="border-b border-line px-5 py-4"><h2 class="font-semibold">Overdue Payments and Penalties</h2></div>
+    <div class="divide-y divide-line">
+        {% for penalty in penalties %}
+        <div class="grid gap-2 px-5 py-4 text-sm md:grid-cols-4">
+            <span>{{ penalty.lending_request.equipment.name }}</span>
+            <span>{{ penalty.days_overdue }} overdue day(s)</span>
+            <span>RM {{ penalty.amount }}</span>
+            <span class="capitalize">{{ penalty.status }}</span>
+        </div>
+        {% empty %}
+        <p class="px-5 py-4 text-sm text-zinc-500">No penalties recorded.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

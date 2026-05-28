@@ -1,0 +1,78 @@
+{% extends 'layouts/base.html' %}
+{% block content %}
+<div class="border-b border-gray-200 pb-4 mb-8">
+    <h1 class="text-2xl font-semibold tracking-normal text-gray-800 uppercase">lendr+ Dashboard</h1>
+</div>
+
+<div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Borrowing Snapshot</h4>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3">
+        <div class="flex items-center justify-between gap-5 p-6 border-b md:border-b-0 md:border-r border-gray-100">
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Active Requests</p>
+                <p class="text-3xl font-bold text-gray-900 mt-1">{{ active_requests }}</p>
+            </div>
+            <i class="fa fa-exchange text-4xl text-gray-500"></i>
+        </div>
+        <div class="flex items-center justify-between gap-5 p-6 border-b md:border-b-0 md:border-r border-gray-100">
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pending Approval</p>
+                <p class="text-3xl font-bold text-gray-900 mt-1">{{ pending_requests }}</p>
+            </div>
+            <i class="fa fa-calendar-check-o text-4xl text-gray-500"></i>
+        </div>
+        <div class="flex items-center justify-between gap-5 p-6">
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Unpaid Penalties</p>
+                <p class="text-3xl font-bold text-gray-900 mt-1">RM {{ unpaid_penalty_total }}</p>
+            </div>
+            <i class="fa fa-gavel text-4xl text-gray-500"></i>
+        </div>
+    </div>
+</div>
+
+<div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-visible">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Recent Lending Activity</h4>
+    </div>
+    <div class="p-6">
+        <div class="overflow-x-auto">
+            <table id="dataTables-example" class="w-full">
+                <colgroup>
+                    <col style="width:26%;">
+                    <col style="width:28%;">
+                    <col style="width:16%;">
+                    <col style="width:30%;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Equipment</th>
+                        <th>Borrowing Period</th>
+                        <th>Status</th>
+                        <th>Last Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in recent_requests %}
+                    <tr>
+                        <td>{{ item.equipment.name }}</td>
+                        <td>{{ item.requested_from }} - {{ item.requested_until }}</td>
+                        <td><span class="status-badge status-{{ item.status }}">{{ item.status }}</span></td>
+                        <td>{{ item.updated_at }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="empty-state text-center py-16 text-gray-700">
+                            <i class="fa fa-search text-5xl block mb-4 opacity-20"></i>
+                            No lending activity found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

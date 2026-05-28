@@ -1,0 +1,88 @@
+{% extends 'layouts/base.html' %}
+{% block content %}
+<div class="border-b border-gray-200 pb-4 mb-8">
+    <h1 class="text-2xl font-semibold tracking-normal text-gray-800 uppercase">Request Lending</h1>
+</div>
+
+<div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Equipment Request Details</h4>
+    </div>
+    <form method="post" class="p-6" onsubmit="return validateLendingRequestForm(this)">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-8">
+            <div class="pod-card {{ equipment.status }} bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-4">
+                    <div class="mb-3 pb-3 border-b border-gray-100">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <div class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <i class="{{ equipment.category_icon_class }} text-gray-400"></i>
+                                    {{ equipment.name }}
+                                </div>
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-0.5">{{ equipment.asset_tag }}</p>
+                            </div>
+                            <span class="pod-status {{ equipment.status }}">{{ equipment.status }}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2.5 text-sm">
+                        <div class="flex items-start justify-between gap-4">
+                            <span class="text-gray-500 font-medium">Category</span>
+                            <span class="text-gray-800 font-semibold text-right">{{ equipment.category.name }}</span>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <span class="text-gray-500 font-medium">Location</span>
+                            <span class="text-gray-800 font-semibold text-right">{{ equipment.lab_location }}</span>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <span class="text-gray-500 font-medium">Condition</span>
+                            <span class="text-gray-800 font-semibold text-right">{{ equipment.condition }}</span>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <span class="text-gray-500 font-medium">Daily Penalty Rate</span>
+                            <span class="text-gray-800 font-semibold text-right">RM {{ equipment.daily_penalty_rate }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Borrow From <span class="text-red-500">*</span></label>
+                        <input name="requested_from" type="date" required class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Borrow Until <span class="text-red-500">*</span></label>
+                        <input name="requested_until" type="date" required class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Purpose <span class="text-red-500">*</span></label>
+                        <textarea name="purpose" rows="8" required placeholder="Explain the lab activity, module, project, or assessment that requires this equipment." class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 pt-5 border-t border-gray-100 flex justify-end gap-3">
+                    <a href="{% url 'equipment:available' %}" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors">
+                        <i class="fa fa-times"></i> Cancel
+                    </a>
+                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-sm">
+                        <i class="fa fa-paper-plane"></i> Submit Request
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    function validateLendingRequestForm(form) {
+        const startDate = form.querySelector('input[name="requested_from"]').value;
+        const endDate = form.querySelector('input[name="requested_until"]').value;
+        if (startDate && endDate && endDate < startDate) {
+            alert('Borrow Until must be the same date or later than Borrow From.');
+            return false;
+        }
+        return true;
+    }
+</script>
+{% endblock %}

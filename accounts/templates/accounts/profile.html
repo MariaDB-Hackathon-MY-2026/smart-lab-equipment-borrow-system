@@ -1,0 +1,394 @@
+{% extends 'layouts/base.html' %}
+{% block content %}
+<div class="border-b border-gray-200 pb-4 mb-8">
+    <h1 class="text-2xl font-semibold tracking-normal text-gray-800 uppercase">Profile Management</h1>
+</div>
+
+<div class="elevated-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
+    <div class="px-6 py-4 border-b border-gray-100">
+        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Account Details</h4>
+    </div>
+    <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                <input value="{{ user.get_username }}" disabled class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                <input value="{{ profile.get_role_display }}" disabled class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                <div class="flex gap-3">
+                    <input value="{{ display_name }}" disabled class="min-w-0 flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                    <button type="button" onclick="openNameModal()" class="inline-flex items-center gap-2 shrink-0 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm"><i class="fa fa-pencil"></i> Update Name</button>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <div class="flex gap-3">
+                    <input value="{{ user.email }}" disabled class="min-w-0 flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                    <button type="button" onclick="openEmailVerification()" class="inline-flex items-center gap-2 shrink-0 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm"><i class="fa fa-envelope"></i> Update Email</button>
+                </div>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                <div class="flex gap-3">
+                    <input value="*******" disabled class="min-w-0 flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
+                    <button type="button" onclick="openPasswordModal()" class="inline-flex items-center gap-2 shrink-0 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm"><i class="fa fa-lock"></i> Update Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="nameModal" class="hidden fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeNameModal()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Update Name</h3>
+                <p class="text-sm text-gray-500 mt-1">Set the display name shown across your lendr+ account.</p>
+            </div>
+            <button type="button" onclick="closeNameModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+
+        <form id="nameUpdateForm" method="post" onsubmit="return validateNameForm()">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="name">
+            <div class="px-7 py-6">
+                <div class="flex items-start gap-4 mb-6">
+                    <div class="w-11 h-11 rounded-full bg-[#155DA3] flex items-center justify-center text-white shrink-0">
+                        <i class="fa fa-id-card"></i>
+                    </div>
+                    <div>
+                        <h5 class="text-sm font-semibold text-gray-800 uppercase tracking-wide">Display Name</h5>
+                        <p class="text-sm text-gray-500 mt-1">Use your full name so administrators and students can identify the account clearly.</p>
+                    </div>
+                </div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Name <span class="text-red-500">*</span></label>
+                <input id="nameInput" name="name" value="{{ display_name }}" placeholder="Enter your full name" maxlength="150" class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors" required>
+            </div>
+
+            <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <button type="button" onclick="closeNameModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors"><i class="fa fa-times"></i> Cancel</button>
+                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-sm"><i class="fa fa-floppy-o"></i> Update Name</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="emailVerificationModal" class="{% if email_otp_pending %}flex{% else %}hidden{% endif %} fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeEmailVerification()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Update Email Address</h3>
+                <p class="text-sm text-gray-500 mt-1">Verify ownership of your new email before it is linked to this account.</p>
+            </div>
+            <button type="button" onclick="closeEmailVerification()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+
+        <div class="px-7 py-6">
+            <div class="flex items-start gap-4 mb-6">
+                <div class="w-11 h-11 rounded-full bg-[#155DA3] flex items-center justify-center text-white shrink-0">
+                    <i class="fa fa-shield"></i>
+                </div>
+                <div>
+                    <h5 class="text-sm font-semibold text-gray-800 uppercase tracking-wide">Email Verification</h5>
+                    <p class="text-sm text-gray-500 mt-1">
+                        Enter a new email address, request an OTP, then submit the code sent to that address.
+                    </p>
+                </div>
+            </div>
+
+            <form method="post" class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 {% if email_otp_pending %}mb-4{% endif %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="email_request_otp">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">New Email Address</label>
+                    <input name="email" type="email" value="{{ email_otp_target }}" placeholder="name@example.com" class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors" required>
+                </div>
+                <div class="flex items-end">
+                    <button id="requestOtpButton" type="submit" {% if email_otp_cooldown_remaining > 0 %}disabled{% endif %} class="inline-flex items-center justify-center gap-2 w-full lg:w-auto px-5 py-3 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                        <i class="fa fa-paper-plane"></i>
+                        {% if email_otp_pending %}Request New OTP{% else %}Request OTP{% endif %}
+                    </button>
+                </div>
+            </form>
+
+            {% if email_otp_pending %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="email_verify_otp">
+                <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-end">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">OTP Code</label>
+                        <input name="otp_code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="Enter 6-digit OTP" class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors" required>
+                    </div>
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 w-full lg:w-auto px-5 py-3 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm"><i class="fa fa-check-circle"></i> Verify & Update</button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Current OTP was sent to {{ email_otp_target }}.</p>
+                <p id="otpCooldownText" class="text-xs text-gray-500 mt-1" data-seconds="{{ email_otp_cooldown_remaining }}"></p>
+            </form>
+            {% endif %}
+        </div>
+
+        <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <button type="button" onclick="closeEmailVerification()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors"><i class="fa fa-times"></i> Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="passwordModal" class="hidden fixed inset-0 z-[9999] items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closePasswordModal()"></div>
+    <div class="relative bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden">
+        <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">Update Password</h3>
+                <p class="text-sm text-gray-500 mt-1">Confirm your current password before setting a new one.</p>
+            </div>
+            <button type="button" onclick="closePasswordModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">&times;</button>
+        </div>
+
+        <form id="passwordUpdateForm" method="post" onsubmit="return validatePasswordForm()">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="password">
+            <div class="px-7 py-6 space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                    <div class="relative">
+                        <input id="currentPassword" name="current_password" type="password" autocomplete="current-password" class="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors" required>
+                        <button type="button" class="password-hold-toggle absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors" data-target="currentPassword" aria-label="Press and hold to show current password" title="Press and hold to show password">
+                            <svg viewBox="0 0 28 20" class="w-6 h-5" aria-hidden="true">
+                                <path d="M3 13.5C4.8 6.8 9.2 3 14 3s9.2 3.8 11 10.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+                                <circle cx="14" cy="13.5" r="4.2" fill="none" stroke="currentColor" stroke-width="2.8"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                    <div class="relative">
+                        <input id="newPassword" name="new_password" type="password" autocomplete="new-password" class="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors" required>
+                        <button type="button" class="password-hold-toggle absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors" data-target="newPassword" aria-label="Press and hold to show new password" title="Press and hold to show password">
+                            <svg viewBox="0 0 28 20" class="w-6 h-5" aria-hidden="true">
+                                <path d="M3 13.5C4.8 6.8 9.2 3 14 3s9.2 3.8 11 10.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+                                <circle cx="14" cy="13.5" r="4.2" fill="none" stroke="currentColor" stroke-width="2.8"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Use at least 8 characters. Avoid passwords that are too common or similar to your account details.</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                    <div class="relative">
+                        <input id="confirmPassword" name="confirm_password" type="password" autocomplete="new-password" class="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-colors" required>
+                        <button type="button" class="password-hold-toggle absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors" data-target="confirmPassword" aria-label="Press and hold to show confirm password" title="Press and hold to show password">
+                            <svg viewBox="0 0 28 20" class="w-6 h-5" aria-hidden="true">
+                                <path d="M3 13.5C4.8 6.8 9.2 3 14 3s9.2 3.8 11 10.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+                                <circle cx="14" cy="13.5" r="4.2" fill="none" stroke="currentColor" stroke-width="2.8"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-7 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <button type="button" onclick="closePasswordModal()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-xl border border-gray-200 transition-colors"><i class="fa fa-times"></i> Cancel</button>
+                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-sm"><i class="fa fa-key"></i> Update Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openNameModal() {
+        const modal = document.getElementById('nameModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        window.setTimeout(function() {
+            document.getElementById('nameInput')?.focus();
+        }, 50);
+    }
+
+    function closeNameModal() {
+        const modal = document.getElementById('nameModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+        const nameInput = document.getElementById('nameInput');
+        if (nameInput) nameInput.value = '{{ display_name|escapejs }}';
+    }
+
+    function openEmailVerification() {
+        const modal = document.getElementById('emailVerificationModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEmailVerification() {
+        const modal = document.getElementById('emailVerificationModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    function openPasswordModal() {
+        const modal = document.getElementById('passwordModal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePasswordModal() {
+        const modal = document.getElementById('passwordModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+        const form = document.getElementById('passwordUpdateForm');
+        if (form) form.reset();
+    }
+
+    function validateNameForm() {
+        const nameInput = document.getElementById('nameInput');
+        const value = nameInput ? nameInput.value.trim() : '';
+        if (!value) {
+            alert('Name cannot be empty.');
+            nameInput?.focus();
+            return false;
+        }
+
+        if (value.length > 150) {
+            alert('Name cannot exceed 150 characters.');
+            nameInput?.focus();
+            return false;
+        }
+
+        if (nameInput) nameInput.value = value;
+        return true;
+    }
+
+    function validatePasswordForm() {
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            alert('Please fill in all password fields.');
+            return false;
+        }
+
+        if (currentPassword === newPassword) {
+            alert('New password must be different from your current password.');
+            return false;
+        }
+
+        if (newPassword !== confirmPassword) {
+            alert('New password and confirm password do not match.');
+            return false;
+        }
+
+        if (newPassword.length < 8) {
+            alert('New password must be at least 8 characters long.');
+            return false;
+        }
+
+        return confirm('Confirm password update?');
+    }
+
+    function revealPassword(button) {
+        const input = document.getElementById(button.dataset.target);
+        if (!input) return;
+        input.type = 'text';
+        button.classList.add('text-gray-700');
+    }
+
+    function hidePassword(button) {
+        const input = document.getElementById(button.dataset.target);
+        if (!input) return;
+        input.type = 'password';
+        button.classList.remove('text-gray-700');
+    }
+
+    (function() {
+        const cooldownText = document.getElementById('otpCooldownText');
+        const requestButton = document.getElementById('requestOtpButton');
+        if (!cooldownText || !requestButton) return;
+
+        let seconds = parseInt(cooldownText.dataset.seconds || '0', 10);
+        function renderCooldown() {
+            if (seconds > 0) {
+                requestButton.disabled = true;
+                cooldownText.textContent = 'You can request a new OTP in ' + seconds + ' seconds.';
+                seconds -= 1;
+                window.setTimeout(renderCooldown, 1000);
+                return;
+            }
+
+            requestButton.disabled = false;
+            cooldownText.textContent = '';
+        }
+
+        renderCooldown();
+    })();
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeNameModal();
+            closeEmailVerification();
+            closePasswordModal();
+        }
+    });
+
+    document.querySelectorAll('.password-hold-toggle').forEach(function(button) {
+        button.addEventListener('mousedown', function(event) {
+            event.preventDefault();
+            revealPassword(button);
+        });
+        button.addEventListener('mouseup', function() {
+            hidePassword(button);
+        });
+        button.addEventListener('mouseleave', function() {
+            hidePassword(button);
+        });
+        button.addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            revealPassword(button);
+        }, { passive: false });
+        button.addEventListener('touchend', function() {
+            hidePassword(button);
+        });
+        button.addEventListener('touchcancel', function() {
+            hidePassword(button);
+        });
+        button.addEventListener('keydown', function(event) {
+            if (event.key !== ' ' && event.key !== 'Enter') return;
+            event.preventDefault();
+            revealPassword(button);
+        });
+        button.addEventListener('keyup', function(event) {
+            if (event.key !== ' ' && event.key !== 'Enter') return;
+            hidePassword(button);
+        });
+        button.addEventListener('blur', function() {
+            hidePassword(button);
+        });
+    });
+
+    {% if email_otp_pending %}
+    document.addEventListener('DOMContentLoaded', openEmailVerification);
+    {% endif %}
+</script>
+{% endblock %}

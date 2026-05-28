@@ -1,0 +1,18 @@
+Dear {{ display_name }},
+
+Please use the one-time password (OTP) below to authorize your lendr+ email change request:
+
+{{ otp_code }}
+
+This OTP will expire in {{ expiry_minutes }} minutes.
+
+Request details:
+Username: {{ username }}
+New email address: {{ new_email }}
+IP address: {{ ip_address }}
+Requested at: {{ requested_at }}
+
+If you did not request this email change, please ignore this message and contact the lendr+ administrator immediately.
+
+Regards,
+lendr+ Security Team
