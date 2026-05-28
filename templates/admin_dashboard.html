@@ -1,0 +1,339 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lendr - Smart Lab Equipment Borrow System</title>
+    <link rel="icon" type="image/jpeg" href="{% static 'images/lendr-small-logo.jpg' %}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .sidebar {
+            width: 240px;
+            min-height: 100vh;
+            background: #0f172a;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            border-radius: 1rem;
+            padding: 0.75rem 1rem;
+            color: #cbd5e1;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .sidebar-link:hover,
+        .sidebar-link.active {
+            background: #0284c7;
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                inset: 0 auto 0 0;
+                z-index: 50;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased md:flex">
+    <aside class="sidebar flex shrink-0 flex-col px-3 py-6" id="sidebar">
+        <div class="mb-8 px-3">
+            <div class="flex items-center gap-3">
+                <img src="{% static 'images/lendr-small-logo.jpg' %}" alt="Lendr mark" class="h-10 w-10 rounded-2xl object-cover">
+                <div>
+                    <p class="text-lg font-semibold tracking-tight text-white">LendR<span class="text-sky-400">+</span></p>
+                    <p class="text-xs font-medium text-slate-400">Admin Console</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="flex flex-1 flex-col gap-1">
+            <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Main</p>
+            <a href="{% url 'dashboard:overview' %}" class="sidebar-link active">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor" opacity=".55"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor" opacity=".55"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor" opacity=".55"/></svg>
+                Dashboard
+            </a>
+            <a href="{% url 'dashboard:equipment_management' %}" class="sidebar-link">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" stroke="currentColor" stroke-width="1.5"/><path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z" stroke="currentColor" stroke-width="1.5"/></svg>
+                Equipment
+            </a>
+            <a href="{% url 'dashboard:borrowings' %}" class="sidebar-link">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Borrowings
+            </a>
+            <a href="{% url 'dashboard:overdue' %}" class="sidebar-link">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Overdue
+            </a>
+
+            <p class="mt-5 px-3 pb-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Reports</p>
+            <a href="{% url 'dashboard:analytics' %}" class="sidebar-link">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Analytics
+            </a>
+        </nav>
+
+        <div class="mt-6 border-t border-slate-700 px-2 pt-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-600 text-sm font-semibold text-white">
+                    {{ request.user.first_name|first|default:"A" }}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-semibold text-white">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="truncate text-xs text-slate-400">{{ request.user.email|default:"admin@lendr.com" }}</p>
+                </div>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="text-slate-400 transition hover:text-white" title="Log out">
+                        <svg width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <main class="mx-auto min-h-screen w-full max-w-7xl flex-1 px-5 py-10 sm:px-8">
+        <section class="w-full rounded-[2rem] bg-white p-8 shadow-xl shadow-slate-200/60 ring-1 ring-slate-200 sm:p-10">
+            <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-4">
+                    <button type="button" onclick="document.getElementById('sidebar').classList.toggle('open')" class="rounded-2xl border border-slate-200 p-3 text-slate-500 transition hover:bg-slate-50 hover:text-sky-700 md:hidden" aria-label="Open navigation">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
+                    <img src="{% static 'images/lendr-small-logo.jpg' %}" alt="Lendr mark" class="h-14 w-14 rounded-2xl object-cover">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-600">Admin Analytics</p>
+                        <h1 class="mt-2 text-3xl font-semibold tracking-tight">Welcome, {{ user.get_username }}</h1>
+                    </div>
+                </div>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700">
+                        Log Out
+                    </button>
+                </form>
+            </div>
+
+            <div class="mt-8 rounded-3xl border border-sky-100 bg-sky-50 p-6 text-slate-700">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-sky-700">LendR+ overview</p>
+                        <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-950">Equipment borrowing and penalty activity</h2>
+                    </div>
+                    <p class="text-sm text-slate-500">{% now "l, N j Y" %}</p>
+                </div>
+            </div>
+
+            {% if messages %}
+                <div class="mt-6 space-y-3">
+                    {% for message in messages %}
+                        <div class="rounded-2xl border px-4 py-3 text-sm font-medium {% if message.tags == 'success' %}border-emerald-100 bg-emerald-50 text-emerald-700{% elif message.tags == 'error' %}border-red-100 bg-red-50 text-red-700{% elif message.tags == 'warning' %}border-amber-100 bg-amber-50 text-amber-700{% else %}border-sky-100 bg-sky-50 text-sky-700{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <section class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-sm font-medium text-slate-500">Total Equipment</p>
+                    <p class="mt-3 text-3xl font-semibold tracking-tight">{{ total_equipment|default:"0" }}</p>
+                    <div class="mt-4 flex h-10 items-end gap-1">
+                        <span class="h-[40%] flex-1 rounded-t bg-sky-100"></span>
+                        <span class="h-[55%] flex-1 rounded-t bg-sky-200"></span>
+                        <span class="h-[70%] flex-1 rounded-t bg-sky-300"></span>
+                        <span class="h-[60%] flex-1 rounded-t bg-sky-200"></span>
+                        <span class="h-[80%] flex-1 rounded-t bg-sky-400"></span>
+                        <span class="h-full flex-1 rounded-t bg-sky-600"></span>
+                    </div>
+                </article>
+
+                <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-sm font-medium text-slate-500">Active Borrowings</p>
+                    <p class="mt-3 text-3xl font-semibold tracking-tight">{{ active_borrowings|default:"0" }}</p>
+                    <div class="mt-4 flex h-10 items-end gap-1">
+                        <span class="h-[50%] flex-1 rounded-t bg-indigo-100"></span>
+                        <span class="h-[65%] flex-1 rounded-t bg-indigo-200"></span>
+                        <span class="h-[45%] flex-1 rounded-t bg-indigo-100"></span>
+                        <span class="h-[80%] flex-1 rounded-t bg-indigo-300"></span>
+                        <span class="h-[70%] flex-1 rounded-t bg-indigo-300"></span>
+                        <span class="h-full flex-1 rounded-t bg-indigo-600"></span>
+                    </div>
+                </article>
+
+                <article class="rounded-3xl border border-red-100 bg-red-50 p-5 shadow-sm">
+                    <p class="text-sm font-medium text-red-700">Overdue Items</p>
+                    <p class="mt-3 text-3xl font-semibold tracking-tight text-red-700">{{ overdue_count|default:"0" }}</p>
+                    <div class="mt-4 flex h-10 items-end gap-1">
+                        <span class="h-[30%] flex-1 rounded-t bg-red-100"></span>
+                        <span class="h-[60%] flex-1 rounded-t bg-red-200"></span>
+                        <span class="h-[40%] flex-1 rounded-t bg-red-100"></span>
+                        <span class="h-[75%] flex-1 rounded-t bg-red-300"></span>
+                        <span class="h-[55%] flex-1 rounded-t bg-red-200"></span>
+                        <span class="h-full flex-1 rounded-t bg-red-500"></span>
+                    </div>
+                </article>
+
+                <article class="rounded-3xl border border-amber-100 bg-amber-50 p-5 shadow-sm">
+                    <p class="text-sm font-medium text-amber-700">Total Penalties</p>
+                    <p class="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{{ total_penalties|default:"RM 0.00" }}</p>
+                    <div class="mt-4 flex h-10 items-end gap-1">
+                        <span class="h-[45%] flex-1 rounded-t bg-amber-100"></span>
+                        <span class="h-[30%] flex-1 rounded-t bg-amber-200"></span>
+                        <span class="h-[70%] flex-1 rounded-t bg-amber-300"></span>
+                        <span class="h-[55%] flex-1 rounded-t bg-amber-200"></span>
+                        <span class="h-[85%] flex-1 rounded-t bg-amber-400"></span>
+                        <span class="h-full flex-1 rounded-t bg-amber-500"></span>
+                    </div>
+                </article>
+            </section>
+
+            <section id="requests" class="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold tracking-tight">Pending Requests</h2>
+                        <p class="mt-1 text-sm text-slate-500">Borrow and return requests waiting for admin action.</p>
+                    </div>
+                    <a href="{% url 'dashboard:borrowings' %}#requests" class="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700">
+                        View Requests
+                    </a>
+                </div>
+
+                <div class="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr_220px] lg:items-end">
+                    <div>
+                        <div class="mb-2 flex items-center justify-between text-sm">
+                            <span class="font-medium text-slate-700">Borrow Requests</span>
+                            <span class="font-semibold text-amber-700">{{ pending_borrow_count|default:"0" }}</span>
+                        </div>
+                        <div class="h-4 overflow-hidden rounded-full bg-amber-100">
+                            <div class="h-full rounded-full bg-amber-500" style="width: {{ pending_borrow_pct|default:'0' }}%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="mb-2 flex items-center justify-between text-sm">
+                            <span class="font-medium text-slate-700">Return Verification</span>
+                            <span class="font-semibold text-violet-700">{{ pending_return_count|default:"0" }}</span>
+                        </div>
+                        <div class="h-4 overflow-hidden rounded-full bg-violet-100">
+                            <div class="h-full rounded-full bg-violet-600" style="width: {{ pending_return_pct|default:'0' }}%"></div>
+                        </div>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 p-4 text-center">
+                        <p class="text-3xl font-semibold tracking-tight text-slate-950">{{ total_pending_request_count|default:"0" }}</p>
+                        <p class="mt-1 text-xs font-medium text-slate-500">total pending</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="transactions" class="mt-8 grid gap-6 xl:grid-cols-3">
+                <article class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:col-span-2">
+                    <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                        <div>
+                            <h2 class="text-lg font-semibold tracking-tight">Recent Transactions</h2>
+                            <p class="mt-1 text-sm text-slate-500">Latest borrowing records</p>
+                        </div>
+                        <p class="text-sm font-medium text-slate-400">{{ transactions|length|default:"0" }} of {{ total_transactions|default:"0" }}</p>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[760px] text-left text-sm">
+                            <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold">Member</th>
+                                    <th class="px-6 py-4 font-semibold">Equipment</th>
+                                    <th class="px-6 py-4 font-semibold">Borrow Date</th>
+                                    <th class="px-6 py-4 font-semibold">Due Date</th>
+                                    <th class="px-6 py-4 font-semibold">Status</th>
+                                    <th class="px-6 py-4 text-right font-semibold">Penalty</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {% for transaction in transactions %}
+                                    <tr class="transition hover:bg-sky-50/60">
+                                        <td class="px-6 py-4">
+                                            <div class="font-medium text-slate-900">{{ transaction.member.get_full_name|default:transaction.member.user.username }}</div>
+                                            <div class="text-xs text-slate-400">{{ transaction.member.member_id }}</div>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">{{ transaction.equipment.name }}</td>
+                                        <td class="px-6 py-4 text-slate-500">{{ transaction.borrow_date|date:"M j, Y" }}</td>
+                                        <td class="px-6 py-4 text-slate-500">{{ transaction.due_date|date:"M j, Y" }}</td>
+                                        <td class="px-6 py-4">
+                                            {% if transaction.status == 'Overdue' %}
+                                                <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">{{ transaction.status }}</span>
+                                            {% elif transaction.status == 'Returned' %}
+                                                <span class="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">{{ transaction.status }}</span>
+                                            {% elif transaction.status == 'Pending' %}
+                                                <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">{{ transaction.status }}</span>
+                                            {% elif transaction.status == 'Rejected' %}
+                                                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ transaction.status }}</span>
+                                            {% else %}
+                                                <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">{{ transaction.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-6 py-4 text-right font-medium text-slate-700">
+                                            {% if transaction.penalty %}RM {{ transaction.penalty }}{% else %}-{% endif %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-8 text-center text-slate-500">No borrowing records yet. Run the seed command or add records in Django admin.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 class="text-lg font-semibold tracking-tight">Most Borrowed</h2>
+                    <p class="mt-1 text-sm text-slate-500">Top equipment by borrowing count</p>
+
+                    <div class="mt-6 space-y-5">
+                        {% for item in most_borrowed %}
+                            <div class="flex items-center gap-4">
+                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sm font-semibold text-sky-700">{{ forloop.counter }}</div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="mb-2 flex items-center justify-between gap-3">
+                                        <p class="truncate text-sm font-medium text-slate-700">{{ item.name }}</p>
+                                        <p class="shrink-0 text-xs font-semibold text-slate-500">{{ item.count }}x</p>
+                                    </div>
+                                    <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+                                        <div class="h-full rounded-full bg-sky-600" style="width: {{ item.pct }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <p class="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">No equipment borrowing data yet.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+            </section>
+        </section>
+    </main>
+    <script>
+        document.addEventListener('click', (event) => {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = event.target.closest('button[aria-label="Open navigation"]');
+
+            if (!sidebar || toggle || window.innerWidth >= 768) {
+                return;
+            }
+
+            if (!sidebar.contains(event.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+    </script>
+</body>
+</html>
